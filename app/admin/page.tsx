@@ -70,7 +70,7 @@ export default function AdminPage() {
       title: "Mantenimiento",
       desc: "Monitorear equipos y herramientas en mantenimiento .",
       icon: "ix:maintenance",
-      path: "/admin/ver-operadores",
+      path: "/admin/mantenimiento",
     },
   ];
 

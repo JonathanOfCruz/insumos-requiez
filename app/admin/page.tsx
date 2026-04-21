@@ -35,19 +35,25 @@ export default function AdminPage() {
       const oscillator = audioCtx.createOscillator();
       const gainNode = audioCtx.createGain();
 
-      oscillator.type = 'sine'; // Sonido suave tipo "biip"
-      oscillator.frequency.setValueAtTime(587.33, audioCtx.currentTime); // Nota Re5
+      // Cambiamos a 'triangle' para que sea más audible y "metálico"
+      oscillator.type = 'triangle';
 
-      gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.5);
+      // Subimos la frecuencia a 880Hz (Nota La5) para que sea más chillón y difícil de ignorar
+      oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
+
+      // Subimos el volumen inicial (0.4 es bastante fuerte, el máximo recomendado es 1.0)
+      gainNode.gain.setValueAtTime(0.4, audioCtx.currentTime);
+
+      // Hacemos que el desvanecimiento sea un poco más lento (0.8s) para que se note más
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.8);
 
       oscillator.connect(gainNode);
       gainNode.connect(audioCtx.destination);
 
       oscillator.start();
-      oscillator.stop(audioCtx.currentTime + 0.5);
+      oscillator.stop(audioCtx.currentTime + 0.8);
     } catch (e) {
-      console.log("Error al reproducir sonido sintético:", e);
+      console.log("Error al reproducir sonido:", e);
     }
   };
 

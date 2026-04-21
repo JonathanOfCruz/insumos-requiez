@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { Icon } from '@iconify/react';
-import Link from 'next/link'; // Importante para la navegación
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 export default function AdminRequestsPage() {
@@ -24,7 +24,6 @@ export default function AdminRequestsPage() {
     };
 
     useEffect(() => {
-        // Obtener iniciales del admin logueado
         const userData = localStorage.getItem("user");
         if (userData) {
             const user = JSON.parse(userData);
@@ -55,26 +54,38 @@ export default function AdminRequestsPage() {
     const pendientesCount = requests.filter((r: any) => r.status === 'Pendiente').length;
 
     return (
-        <main className="min-h-screen bg-[#f8fafc] p-8 lg:p-12">
-            {/* Top Bar: Botón de Perfil */}
-            <div className="relative">
-                <button onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }} className="w-10 h-10 bg-[#0095ff] rounded-full flex items-center justify-center text-white font-bold text-xs shadow hover:bg-blue-600 transition-colors uppercase">{initials}</button>
-                {menuOpen && (
-                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-100 py-2 z-50">
-                        <button onClick={() => { localStorage.removeItem("user"); router.push("/"); }} className="w-full px-4 py-3 text-left text-sm text-red-500 hover:bg-red-50 flex items-center gap-3 transition-colors font-bold">
-                            <Icon icon="solar:logout-3-bold" className="text-xl" />
-                            <span>Cerrar sesión</span>
-                        </button>
-                    </div>
-                )}
+        <main className="min-h-screen bg-[#f8fafc] p-8 lg:p-12" onClick={() => setMenuOpen(false)}>
+            
+            {/* BARRA SUPERIOR - BOTÓN ALINEADO A LA DERECHA */}
+            <div className="flex justify-end mb-4">
+                <div className="relative">
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }} 
+                        className="w-10 h-10 bg-[#0095ff] rounded-full flex items-center justify-center text-white font-bold text-xs shadow-lg hover:bg-blue-600 transition-all active:scale-95 uppercase border-2 border-white"
+                    >
+                        {initials}
+                    </button>
+                    
+                    {menuOpen && (
+                        <div className="absolute right-0 mt-3 w-48 bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-50 animate-in fade-in zoom-in duration-200">
+                            <button 
+                                onClick={() => { localStorage.removeItem("user"); router.push("/"); }} 
+                                className="w-full px-4 py-3 text-left text-xs text-red-500 hover:bg-red-50 flex items-center gap-3 transition-colors font-bold"
+                            >
+                                <Icon icon="solar:logout-3-bold" className="text-xl" />
+                                <span>Cerrar sesión</span>
+                            </button>
+                        </div>
+                    )}
+                </div>
             </div>
 
-            {/* Header / Breadcrumbs corregidos */}
+            {/* Header / Breadcrumbs */}
             <div className="mb-12">
                 <nav className="flex items-center gap-2 text-gray-400 text-sm mb-4 font-medium">
                     <div className="text-sm text-gray-500 flex items-center gap-2">
                         <Link href="/admin" className="hover:text-blue-600 transition-colors font-medium">Inicio</Link>
-                        <Icon icon="solar:alt-arrow-right-linear" />
+                        <Icon icon="solar:alt-arrow-right-linear" className="text-[10px]" />
                         <span className="text-blue-600 font-bold">Peticiones</span>
                     </div>
                 </nav>
@@ -159,12 +170,6 @@ export default function AdminRequestsPage() {
                             ))}
                         </tbody>
                     </table>
-                    {!loading && requests.length === 0 && (
-                        <div className="p-24 text-center">
-                            <Icon icon="solar:box-minimalistic-linear" className="text-6xl text-gray-200 mx-auto mb-4" />
-                            <p className="text-gray-400 font-medium">No hay peticiones por el momento</p>
-                        </div>
-                    )}
                 </div>
             </div>
         </main>

@@ -66,6 +66,12 @@ export default function AdminPage() {
       icon: "solar:users-group-two-rounded-bold",
       path: "/admin/ver-operadores",
     },
+    {
+      title: "Mantenimiento",
+      desc: "Monitorear equipos y herramientas en mantenimiento .",
+      icon: "ix:maintenance",
+      path: "/admin/ver-operadores",
+    },
   ];
 
   return (

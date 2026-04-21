@@ -1,0 +1,11 @@
+import mongoose from "mongoose";
+
+const MovementSchema = new mongoose.Schema({
+  productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+  type: { type: String, enum: ['Entrada', 'Salida'], required: true },
+  quantity: { type: Number, required: true },
+  description: { type: String },
+  createdAt: { type: Date, default: Date.now }
+});
+
+export default mongoose.models.Movement || mongoose.model("Movement", MovementSchema);

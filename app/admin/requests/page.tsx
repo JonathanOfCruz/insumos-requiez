@@ -2,11 +2,14 @@
 import { useState, useEffect } from 'react';
 import { Icon } from '@iconify/react';
 import Link from 'next/link'; // Importante para la navegación
+import { useRouter } from 'next/navigation';
 
 export default function AdminRequestsPage() {
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [adminInitials, setAdminInitials] = useState("AD");
+    const [menuOpen, setMenuOpen] = useState(false);
+    const [initials, setInitials] = useState("...");
+    const router = useRouter();
 
     const fetchRequests = async () => {
         try {
@@ -27,7 +30,7 @@ export default function AdminRequestsPage() {
             const user = JSON.parse(userData);
             const names = (user.name || "AD").split(" ");
             const initials = names.map((n: string) => n[0]).join("").toUpperCase().substring(0, 3);
-            setAdminInitials(initials);
+            setInitials(initials);
         }
         fetchRequests();
     }, []);
@@ -54,22 +57,30 @@ export default function AdminRequestsPage() {
     return (
         <main className="min-h-screen bg-[#f8fafc] p-8 lg:p-12">
             {/* Top Bar: Botón de Perfil */}
-            <div className="flex justify-end mb-4">
-                <div className="w-12 h-12 bg-[#0095ff] rounded-full flex items-center justify-center text-white font-bold text-sm shadow-lg border-4 border-white">
-                    {adminInitials}
-                </div>
+            <div className="relative">
+                <button onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }} className="w-10 h-10 bg-[#0095ff] rounded-full flex items-center justify-center text-white font-bold text-xs shadow hover:bg-blue-600 transition-colors uppercase">{initials}</button>
+                {menuOpen && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-100 py-2 z-50">
+                        <button onClick={() => { localStorage.removeItem("user"); router.push("/"); }} className="w-full px-4 py-3 text-left text-sm text-red-500 hover:bg-red-50 flex items-center gap-3 transition-colors font-bold">
+                            <Icon icon="solar:logout-3-bold" className="text-xl" />
+                            <span>Cerrar sesión</span>
+                        </button>
+                    </div>
+                )}
             </div>
 
             {/* Header / Breadcrumbs corregidos */}
             <div className="mb-12">
                 <nav className="flex items-center gap-2 text-gray-400 text-sm mb-4 font-medium">
-                    <Link href="/admin" className="hover:text-gray-600 transition-colors">Inicio</Link>
-                    <span>{'>'}</span>
-                    <Link href="/admin/requests" className="text-blue-500 font-bold">Peticiones</Link>
+                    <div className="text-sm text-gray-500 flex items-center gap-2">
+                        <Link href="/admin" className="hover:text-blue-600 transition-colors font-medium">Inicio</Link>
+                        <Icon icon="solar:alt-arrow-right-linear" />
+                        <span className="text-blue-600 font-bold">Peticiones</span>
+                    </div>
                 </nav>
-                
+
                 <h1 className="text-5xl font-black text-gray-800 tracking-tight">Ver peticiones</h1>
-                
+
                 <div className="mt-6 inline-block">
                     <p className="text-4xl font-black text-gray-800 leading-none">{pendientesCount}</p>
                     <p className="text-gray-400 text-[10px] font-bold uppercase tracking-[0.2em] mt-2">Pendientes</p>
@@ -81,10 +92,10 @@ export default function AdminRequestsPage() {
                 <div className="p-8 border-b border-gray-50 flex justify-end">
                     <div className="relative w-72">
                         <Icon icon="solar:magnifer-linear" className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg" />
-                        <input 
-                            type="text" 
-                            placeholder="Buscar por código u operador..." 
-                            className="w-full pl-12 pr-6 py-3 bg-gray-50 rounded-2xl text-xs outline-none border border-transparent focus:border-blue-100 focus:bg-white transition-all" 
+                        <input
+                            type="text"
+                            placeholder="Buscar por código u operador..."
+                            className="w-full pl-12 pr-6 py-3 bg-gray-50 rounded-2xl text-xs outline-none border border-transparent focus:border-blue-100 focus:bg-white transition-all"
                         />
                     </div>
                 </div>
@@ -121,13 +132,13 @@ export default function AdminRequestsPage() {
                                         <td className="px-10 py-7">
                                             {req.status === 'Pendiente' ? (
                                                 <div className="flex justify-center gap-3">
-                                                    <button 
+                                                    <button
                                                         onClick={() => handleStatus(req._id, 'Aprobada')}
                                                         className="bg-[#b4f4c8] text-[#2d7a4d] px-6 py-2 rounded-xl text-[10px] font-bold hover:scale-105 active:scale-95 transition-all shadow-sm shadow-green-200"
                                                     >
                                                         Aceptar
                                                     </button>
-                                                    <button 
+                                                    <button
                                                         onClick={() => handleStatus(req._id, 'Rechazada')}
                                                         className="bg-[#ffdada] text-[#c24b4b] px-6 py-2 rounded-xl text-[10px] font-bold hover:scale-105 active:scale-95 transition-all shadow-sm shadow-red-200"
                                                     >
@@ -136,9 +147,8 @@ export default function AdminRequestsPage() {
                                                 </div>
                                             ) : (
                                                 <div className="text-center">
-                                                    <span className={`text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-lg ${
-                                                        req.status === 'Aprobada' ? 'bg-green-50 text-green-500' : 'bg-red-50 text-red-400'
-                                                    }`}>
+                                                    <span className={`text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-lg ${req.status === 'Aprobada' ? 'bg-green-50 text-green-500' : 'bg-red-50 text-red-400'
+                                                        }`}>
                                                         {req.status}
                                                     </span>
                                                 </div>

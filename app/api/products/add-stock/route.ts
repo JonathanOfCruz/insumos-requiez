@@ -1,5 +1,6 @@
 import { connectDB } from "@/app/lib/mongodb";
 import Product from "@/app/lib/models/Product";
+import Movement from "@/app/lib/models/Movement";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
@@ -8,24 +9,28 @@ export async function POST(req: Request) {
     const data = await req.json();
     const { code, quantityToAdd } = data;
 
-    // Validación básica en backend
     if (!code || !quantityToAdd || quantityToAdd <= 0) {
       return NextResponse.json({ error: "Datos incompletos o cantidad inválida" }, { status: 400 });
     }
 
-    // OPERACIÓN SENIOR: Actualización Atómica Incremental
-    // Buscamos por código y usamos $inc para sumar la cantidad directamente en la DB
+    // Usamos returnDocument: 'after' para evitar el warning de 'new'
     const updatedProduct = await Product.findOneAndUpdate(
       { code: code.trim() },
-      { $inc: { stock: quantityToAdd } }, // Suma quantityToAdd al valor actual de stock
-      { new: true, runValidators: true } // Devuelve el documento actualizado y valida
+      { $inc: { stock: quantityToAdd } },
+      { returnDocument: 'after', runValidators: true }
     );
 
     if (!updatedProduct) {
-      return NextResponse.json({ error: "El producto con este código no existe" }, { status: 404 });
+      return NextResponse.json({ error: "El producto no existe" }, { status: 404 });
     }
 
-    // Opcional: Registrar esta operación en una colección de 'MovimientosInventario'
+    // REGISTRAMOS LA ENTRADA EN EL HISTORIAL
+    await Movement.create({
+      productId: updatedProduct._id,
+      type: 'Entrada',
+      quantity: quantityToAdd,
+      description: 'Ajuste de stock manual'
+    });
 
     return NextResponse.json({ 
       success: true, 

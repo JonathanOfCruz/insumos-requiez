@@ -1,80 +1,77 @@
 import { connectDB } from "@/app/lib/mongodb";
 import RequestModel from "@/app/lib/models/Request";
 import Product from "@/app/lib/models/Product";
+import Movement from "@/app/lib/models/Movement"; // Importante importar el modelo
 import { NextResponse } from "next/server";
-
-export async function GET() {
-    try {
-        await connectDB();
-        const requests = await RequestModel.find()
-            .populate('operator', 'name area')
-            .populate('items.product', 'name code')
-            .sort({ createdAt: -1 });
-
-        return NextResponse.json(requests);
-    } catch (error) {
-        return NextResponse.json({ error: "Error al cargar peticiones" }, { status: 500 });
-    }
-}
 
 export async function PATCH(req: Request) {
     try {
         await connectDB();
         const { requestId, newStatus } = await req.json();
 
-        // 1. Buscar la petición original para conocer los productos y su estado actual
-        const requestToUpdate = await RequestModel.findById(requestId);
+        if (!requestId || !newStatus) {
+            return NextResponse.json({ error: "Faltan datos" }, { status: 400 });
+        }
 
-        if (!requestToUpdate) {
+        // 1. Buscamos la solicitud completa con sus ítems
+        const requestDoc = await RequestModel.findById(requestId).populate('operator');
+
+        if (!requestDoc) {
             return NextResponse.json({ error: "Petición no encontrada" }, { status: 404 });
         }
 
-        // 2. Evitar procesar una petición que ya fue Aprobada o Rechazada anteriormente
-        if (requestToUpdate.status !== 'Pendiente') {
-            return NextResponse.json({ error: "Esta petición ya ha sido procesada" }, { status: 400 });
-        }
-
-        // 3. Lógica específica si el nuevo estado es 'Aprobada'
-        if (newStatus === 'Aprobada') {
-            // Validar stock antes de realizar cualquier cambio
-            for (const item of requestToUpdate.items) {
-                const product = await Product.findById(item.product);
-                
-                if (!product) {
-                    return NextResponse.json({ 
-                        error: `Producto no encontrado (ID: ${item.product})` 
-                    }, { status: 404 });
-                }
-
-                if (product.stock < item.quantityRequested) {
-                    return NextResponse.json({ 
-                        error: `Stock insuficiente para ${product.name}. Disponible: ${product.stock}, Solicitado: ${item.quantityRequested}` 
-                    }, { status: 409 });
-                }
+        // 2. Si el Admin aprueba, procesamos el inventario y movimientos
+        if (newStatus === "Aprobada") {
+            // Verificamos que no haya sido aprobada antes para evitar doble descuento
+            if (requestDoc.status === "Aprobada") {
+                return NextResponse.json({ error: "Esta petición ya fue aprobada previamente." }, { status: 400 });
             }
 
-            // Descontar el stock de cada producto
-            const updatePromises = requestToUpdate.items.map((item: any) => {
-                return Product.findByIdAndUpdate(item.product, {
-                    $inc: { stock: -item.quantityRequested } // Decrementa el stock
-                });
-            });
+            // Usamos un bucle for...of para manejar las operaciones asíncronas correctamente
+            for (const item of requestDoc.items) {
+                // A. Descontamos el stock físicamente
+                const updatedProduct = await Product.findByIdAndUpdate(
+                    item.product,
+                    { $inc: { stock: -item.quantityRequested } },
+                    { returnDocument: 'after', runValidators: true }
+                );
 
-            await Promise.all(updatePromises);
+                // B. REGISTRO EN LA COLECCIÓN MOVEMENT (La huella para el historial)
+                await Movement.create({
+                    productId: item.product,
+                    type: 'Salida',
+                    quantity: item.quantityRequested,
+                    description: `Petición: ${requestDoc.operator?.name || 'Operador'} (ID: ${requestId.slice(-5)})`,
+                    createdAt: new Date()
+                });
+            }
         }
 
-        // 4. Actualizar el estado de la petición
-        requestToUpdate.status = newStatus;
-        await requestToUpdate.save();
+        // 3. Actualizamos el estado de la solicitud en la base de datos
+        requestDoc.status = newStatus;
+        await requestDoc.save();
 
         return NextResponse.json({ 
             success: true, 
-            message: `Petición ${newStatus.toLowerCase()} con éxito.`,
-            updatedRequest: requestToUpdate 
+            message: `Solicitud ${newStatus} correctamente.` 
         });
 
     } catch (error) {
         console.error("Error al procesar la petición:", error);
         return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
+    }
+}
+
+// Aprovechamos para dejar el GET que ya tenías funcionando
+export async function GET() {
+    try {
+        await connectDB();
+        const requests = await RequestModel.find()
+            .populate('operator', 'name')
+            .populate('items.product', 'name code')
+            .sort({ createdAt: -1 });
+        return NextResponse.json(requests);
+    } catch (error) {
+        return NextResponse.json({ error: "Error al obtener peticiones" }, { status: 500 });
     }
 }

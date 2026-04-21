@@ -1,6 +1,7 @@
 import { connectDB } from "@/app/lib/mongodb";
 import RequestModel from "@/app/lib/models/Request";
 import Product from "@/app/lib/models/Product";
+import Movement from "@/app/lib/models/Movement";
 import { NextResponse } from "next/server";
 
 export async function PUT(
@@ -12,47 +13,63 @@ export async function PUT(
     const { id } = await params;
     const { status } = await req.json();
 
-    // Solo procesamos el descuento si el nuevo estado es "Aprobada"
     if (status === "Aprobada") {
-      // 1. Buscamos la solicitud original
       const requestDoc = await RequestModel.findById(id);
       
-      if (!requestDoc) {
-        return NextResponse.json({ error: "Solicitud no encontrada" }, { status: 404 });
-      }
+      if (!requestDoc) return NextResponse.json({ error: "No encontrada" }, { status: 404 });
+      if (requestDoc.status === "Aprobada") return NextResponse.json({ error: "Ya aprobada" }, { status: 400 });
 
-      if (requestDoc.status === "Aprobada") {
-        return NextResponse.json({ error: "Esta solicitud ya fue aprobada y descontada previamente." }, { status: 400 });
-      }
-
-      // 2. Operación Atómica Senior: Descuento de Stock
-      // Usamos Promise.all para procesar todos los productos de la solicitud en paralelo
       const updatePromises = requestDoc.items.map(async (item: any) => {
-        return Product.findByIdAndUpdate(
+        // 1. Descontar stock
+        await Product.findByIdAndUpdate(
           item.product,
-          { $inc: { stock: -item.quantityRequested } }, // $inc con valor negativo resta
-          { runValidators: true, new: true }
+          { $inc: { stock: -item.quantityRequested } },
+          { runValidators: true, returnDocument: 'after' }
         );
+
+        // 2. Registrar movimiento de salida
+        await Movement.create({
+          productId: item.product,
+          type: 'Salida',
+          quantity: item.quantityRequested,
+          description: `Petición aprobada (Ref: ${id.substring(15)})`
+        });
       });
 
       await Promise.all(updatePromises);
     }
 
-    // 3. Actualizamos el estado de la solicitud
     const updatedRequest = await RequestModel.findByIdAndUpdate(
       id,
       { status },
       { returnDocument: 'after' }
     );
 
-    return NextResponse.json({ 
-      success: true, 
-      message: status === "Aprobada" ? "Solicitud aprobada y stock descontado." : "Estado actualizado.",
-      request: updatedRequest 
-    });
+    return NextResponse.json({ success: true, request: updatedRequest });
 
   } catch (error) {
-    console.error("Error al procesar aprobación:", error);
-    return NextResponse.json({ error: "Error al actualizar la solicitud" }, { status: 500 });
+    return NextResponse.json({ error: "Error al actualizar" }, { status: 500 });
+  }
+}
+
+// AGREGAR ESTO PARA EL POLLING DEL OPERADOR
+export async function GET(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    await connectDB();
+    const { id } = await params;
+    
+    const requestDoc = await RequestModel.findById(id);
+    
+    if (!requestDoc) {
+      return NextResponse.json({ error: "Solicitud no encontrada" }, { status: 404 });
+    }
+
+    // Devolvemos el documento completo (incluyendo el status)
+    return NextResponse.json(requestDoc);
+  } catch (error) {
+    return NextResponse.json({ error: "Error al obtener la solicitud" }, { status: 500 });
   }
 }

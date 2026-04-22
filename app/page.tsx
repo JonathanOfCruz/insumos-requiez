@@ -96,7 +96,7 @@ export default function LoginPage() {
               maxLength={4}
               value={pin}
               onChange={(e) => setPin(e.target.value)}
-              className="text-center text-3xl tracking-widest border-2 border-gray-100 rounded-xl p-3 w-36 mb-8 focus:border-blue-500 outline-none bg-gray-50"
+              className="text-center text-3xl text-gray-400 tracking-widest border-2 border-gray-100 rounded-xl p-3 w-36 mb-8 focus:border-blue-500 outline-none bg-gray-50"
               autoFocus
             />
           </div>

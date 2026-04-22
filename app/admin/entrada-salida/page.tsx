@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Icon } from '@iconify/react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 interface IMovement {
     _id: string;
@@ -11,21 +12,22 @@ interface IMovement {
     type: 'Entrada' | 'Salida';
     quantity: number;
     description: string;
-    operator: any; 
+    operator: any;
     createdAt: string;
-}
-
-interface IProduct {
-    _id: string;
-    code: string;
-    name: string;
 }
 
 export default function ControlMovimientosPage() {
     const [initials, setInitials] = useState("...");
+    const [menuOpen, setMenuOpen] = useState(false);
+    const router = useRouter();
+
     const [movements, setMovements] = useState<IMovement[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+
+    // --- ESTADOS DE PAGINACIÓN ---
+    const [currentPage, setCurrentPage] = useState(1);
+    const [rowsPerPage, setRowsPerPage] = useState(25);
 
     useEffect(() => {
         loadData();
@@ -42,10 +44,14 @@ export default function ControlMovimientosPage() {
         }
     }, []);
 
+    const handleLogout = () => {
+        localStorage.removeItem("user");
+        router.push("/");
+    };
+
     const loadData = async () => {
         setLoading(true);
         try {
-            // Solo consultamos las APIs que sí tienes creadas
             const [resHist, resProd] = await Promise.all([
                 fetch('/api/history'),
                 fetch('/api/products')
@@ -57,16 +63,12 @@ export default function ControlMovimientosPage() {
             if (Array.isArray(historyData)) {
                 const enrichedMovements = historyData.map((mov: any) => {
                     const product = productsData.find((p: any) => p._id === mov.productId);
-
-                    // Lógica de visualización del operador
                     let nombreFinal = "Sistema";
 
                     if (mov.operator) {
-                        // Si el backend ya devolvió el objeto (vía .populate)
                         if (typeof mov.operator === 'object' && mov.operator.name) {
                             nombreFinal = mov.operator.name;
-                        } 
-                        // Si solo viene el ID y no tenemos API de cruce, mostramos los últimos dígitos
+                        }
                         else if (typeof mov.operator === 'string') {
                             nombreFinal = `ID: ...${mov.operator.slice(-4)}`;
                         }
@@ -82,7 +84,7 @@ export default function ControlMovimientosPage() {
                 setMovements(enrichedMovements);
             }
         } catch (err) {
-            console.error("Error al cargar los datos:", err);
+            console.error("Error:", err);
             setMovements([]);
         } finally {
             setLoading(false);
@@ -91,117 +93,163 @@ export default function ControlMovimientosPage() {
 
     const filteredMovements = movements.filter((mov) => {
         const term = searchTerm.toLowerCase().trim();
-        if (!term) return true;
         return (
             mov.productCode?.toLowerCase().includes(term) ||
             mov.productName?.toLowerCase().includes(term) ||
-            mov.operator?.toLowerCase().includes(term) ||
-            mov.description?.toLowerCase().includes(term)
+            mov.operator?.toLowerCase().includes(term)
         );
     });
 
-    return (
-        <main className="min-h-screen bg-[#f4f7fa] p-6 lg:p-10">
-            <div className="flex justify-between items-center mb-8">
-                <div className="text-sm text-gray-500 flex items-center gap-2">
-                    <Link href="/admin" className="hover:text-blue-600 transition-colors font-medium">Inicio</Link>
-                    <Icon icon="solar:alt-arrow-right-linear" className="text-[10px]" />
-                    <span className="text-blue-600 font-bold">Control de Inventario</span>
-                </div>
-                <div className="w-10 h-10 bg-[#0095ff] rounded-full flex items-center justify-center text-white font-bold text-xs shadow-lg uppercase border-2 border-white">
-                    {initials}
-                </div>
-            </div>
+    const totalPages = Math.ceil(filteredMovements.length / rowsPerPage);
+    const currentItems = filteredMovements.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
 
-            <header className="mb-10">
-                <h1 className="text-4xl font-black text-gray-800 tracking-tight">Historial Detallado</h1>
-                <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-2">Movimientos de Almacén</p>
+    return (
+        <main className="min-h-screen bg-[#f4f7fa] pb-20" onClick={() => setMenuOpen(false)}>
+            {/* Header */}
+            <header className="flex justify-between items-center mb-8 p-4 bg-white/80 backdrop-blur-md border-b border-white shadow-sm sticky top-0 z-50">
+                <div className="flex items-center gap-4">
+                    <div className="hidden md:flex items-center gap-2">
+                        <div className="w-2 h-2 bg-[#0095ff] rounded-full animate-pulse" />
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Control de Entradas y Salidas</span>
+                    </div>
+                    <div className="text-sm text-gray-400 flex items-center gap-2 px-2 pr-4">
+                        <Link href="/admin" className="hover:text-blue-600 transition-colors font-medium">Inicio</Link>
+                        <Icon icon="solar:alt-arrow-right-linear" className="text-[10px]" />
+                        <span className="text-blue-600 font-bold">Bitácora</span>
+                    </div>
+                </div>
+
+                <div className="relative">
+                    <button onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }} className="w-10 h-10 bg-[#0095ff] rounded-full flex items-center justify-center text-white font-bold text-xs shadow-lg border-2 border-white">{initials}</button>
+                    {menuOpen && (
+                        <div className="absolute right-0 mt-3 w-48 bg-white rounded-xl shadow-2xl border border-gray-100 py-2 z-50">
+                            <button onClick={handleLogout} className="w-full px-4 py-3 text-left text-sm text-red-500 hover:bg-red-50 flex items-center gap-3 font-semibold">
+                                <Icon icon="solar:logout-3-bold" className="text-xl" />
+                                <span>Cerrar sesión</span>
+                            </button>
+                        </div>
+                    )}
+                </div>
             </header>
 
-            <div className="bg-white rounded-[2rem] shadow-xl shadow-blue-900/5 border border-gray-100 overflow-hidden relative">
-                {loading && (
-                    <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-10 backdrop-blur-[1px]">
-                        <Icon icon="solar:restart-linear" className="text-4xl text-blue-500 animate-spin" />
-                    </div>
-                )}
+            <div className="px-6 lg:px-10">
+                <h1 className="text-4xl font-black text-gray-800 tracking-tight mb-10">Historial Detallado</h1>
 
-                <div className="p-8 border-b border-gray-50 flex justify-end">
-                    <div className="relative w-80">
-                        <Icon icon="solar:magnifer-linear" className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg" />
-                        <input
-                            type="text"
-                            placeholder="Buscar por código u operador..."
-                            className="w-full pl-12 pr-6 py-3 bg-gray-50 rounded-2xl text-xs outline-none border border-transparent focus:border-blue-100 focus:bg-white transition-all font-medium"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
-                </div>
+                <div className="bg-white rounded-[2rem] shadow-xl shadow-blue-900/5 border border-gray-100 overflow-hidden relative">
+                    {loading && (
+                        <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-10 backdrop-blur-[1px]">
+                            <Icon icon="solar:restart-linear" className="text-4xl text-blue-500 animate-spin" />
+                        </div>
+                    )}
 
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="text-[11px] uppercase text-gray-400 tracking-widest border-b border-gray-50">
-                                <th className="px-10 py-6 font-bold">Fecha / Hora</th>
-                                <th className="px-10 py-6 font-bold">Producto</th>
-                                <th className="px-10 py-6 font-bold text-center">Tipo</th>
-                                <th className="px-10 py-6 font-bold text-center">Cant.</th>
-                                <th className="px-10 py-6 font-bold">Descripción</th>
-                                <th className="px-10 py-6 font-bold text-center">Operador</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-50">
-                            {filteredMovements.length > 0 ? (
-                                filteredMovements.map((mov) => (
-                                    <tr key={mov._id} className="group hover:bg-blue-50/30 transition-all">
-                                        <td className="px-10 py-7">
-                                            <div className="font-extrabold text-gray-800 text-xs">
-                                                {new Date(mov.createdAt).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })}
-                                            </div>
-                                            <div className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter mt-1">
-                                                {new Date(mov.createdAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
-                                            </div>
-                                        </td>
-                                        <td className="px-10 py-7">
+                    {/* BARRA DE HERRAMIENTAS INTEGRADA (Buscador y Paginación de ProductosPage) */}
+                    <div className="p-6 border-b border-gray-100 flex flex-col xl:flex-row justify-between items-center gap-4 bg-white">
+                        {/* Buscador Estilo Productos */}
+                        <div className="relative w-full xl:w-72">
+                            <Icon icon="solar:magnifer-linear" className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg" />
+                            <input
+                                type="text"
+                                placeholder="Búsqueda global..."
+                                value={searchTerm}
+                                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                                className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium"
+                            />
+                        </div>
+
+                        {/* Controles de Paginación Estilo Productos */}
+                        <div className="flex items-center gap-4 text-gray-600 text-sm font-medium">
+                            <div className="flex items-center border border-gray-300 rounded-lg px-3 py-1.5 bg-white">
+                                <select
+                                    value={rowsPerPage}
+                                    onChange={(e) => { setRowsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+                                    className="bg-transparent outline-none cursor-pointer text-xs font-bold"
+                                >
+                                    <option value={5}>5</option>
+                                    <option value={10}>10</option>
+                                    <option value={25}>25</option>
+                                    <option value={50}>50</option>
+                                </select>
+                            </div>
+
+                            <button onClick={loadData} className="hover:text-blue-500 transition-colors p-1" title="Actualizar">
+                                <Icon icon="solar:refresh-bold" className="text-xl" />
+                            </button>
+
+                            <div className="flex items-center gap-1 border-l pl-4 border-gray-100">
+                                <button
+                                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                    disabled={currentPage === 1}
+                                    className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-30"
+                                >
+                                    <Icon icon="solar:alt-arrow-left-bold" className="text-xl" />
+                                </button>
+                                <span className="text-[11px] font-black text-gray-400 uppercase tracking-tighter mx-1">
+                                    {currentPage} / {totalPages || 1}
+                                </span>
+                                <button
+                                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                    disabled={currentPage === totalPages || totalPages === 0}
+                                    className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-30"
+                                >
+                                    <Icon icon="solar:alt-arrow-right-bold" className="text-xl" />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left border-separate border-spacing-0">
+                            <thead>
+                                <tr className="text-[11px] uppercase text-gray-400 tracking-widest font-bold bg-white">
+                                    <th className="px-8 py-5 border-b border-gray-50">Producto</th>
+                                    <th className="px-8 py-5 border-b border-gray-50 text-center">Tipo</th>
+                                    <th className="px-8 py-5 border-b border-gray-50 text-center">Cant.</th>
+                                    <th className="px-8 py-5 border-b border-gray-50 text-center">Operador</th>
+                                    <th className="px-8 py-5 border-b border-gray-50 text-center">Fecha / Hora</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                                {currentItems.map((mov) => (
+                                    <tr key={mov._id} className="bg-white hover:bg-blue-50/50 transition-all group">
+                                        <td className="px-8 py-5">
                                             <span className="font-black text-blue-600 block text-xs tracking-tight">{mov.productCode}</span>
-                                            <span className="text-gray-500 text-[11px] font-semibold">{mov.productName}</span>
+                                            <span className="text-gray-500 text-[10px] font-medium">{mov.productName}</span>
                                         </td>
-                                        <td className="px-10 py-7 text-center">
-                                            <span className={`text-[10px] px-3 py-1.5 rounded-lg font-black uppercase tracking-tighter ${mov.type === 'Entrada' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                                                }`}>
+                                        <td className="px-8 py-5 text-center">
+                                            <span className={`text-[9px] px-2.5 py-1 rounded-full font-black uppercase tracking-tighter ${mov.type === 'Entrada' ? 'bg-green-100 text-green-600 border border-green-200' : 'bg-red-100 text-red-600 border border-red-200'}`}>
                                                 {mov.type}
                                             </span>
                                         </td>
-                                        <td className={`px-10 py-7 text-center font-black text-sm ${mov.type === 'Entrada' ? 'text-green-600' : 'text-red-600'
-                                            }`}>
+                                        <td className={`px-8 py-5 text-center font-black text-xs ${mov.type === 'Entrada' ? 'text-green-600' : 'text-red-600'}`}>
                                             {mov.type === 'Entrada' ? '+' : '-'}{mov.quantity}
                                         </td>
-                                        <td className="px-10 py-7">
-                                            <p className="text-gray-500 italic text-[11px] max-w-[200px] leading-relaxed font-medium">
-                                                {mov.description || 'Sin descripción adicional'}
-                                            </p>
-                                        </td>
-                                        <td className="px-10 py-7 text-center">
-                                            <span className="bg-gray-100 text-gray-500 px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-tighter group-hover:bg-gray-200 transition-colors">
+                                        <td className="px-8 py-5 text-center">
+                                            <span className="bg-gray-100 text-gray-500 px-3 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-gray-200">
                                                 {mov.operator}
                                             </span>
                                         </td>
-                                    </tr>
-                                ))
-                            ) : (
-                                !loading && (
-                                    <tr>
-                                        <td colSpan={6} className="py-24 text-center">
-                                            <div className="flex flex-col items-center gap-3">
-                                                <Icon icon="solar:box-minimalistic-linear" className="text-6xl text-gray-200" />
-                                                <span className="text-gray-400 font-bold uppercase tracking-[0.2em] text-[10px]">No hay movimientos registrados</span>
+                                        <td className="px-8 py-5 text-center">
+                                            <div className="font-bold text-gray-700 text-[11px]">
+                                                {new Date(mov.createdAt).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                            </div>
+                                            <div className="text-gray-400 text-[9px] uppercase font-bold tracking-tighter">
+                                                {new Date(mov.createdAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: true })}
                                             </div>
                                         </td>
                                     </tr>
-                                )
-                            )}
-                        </tbody>
-                    </table>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div className="px-8 py-5 flex justify-between items-center bg-gray-50/50 border-t border-gray-100">
+                        <p className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">
+                            Mostrando {currentItems.length} de {filteredMovements.length} registros
+                        </p>
+                        <p className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">
+                            Página {currentPage} de {totalPages || 1}
+                        </p>
+                    </div>
                 </div>
             </div>
         </main>

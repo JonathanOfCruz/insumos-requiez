@@ -12,30 +12,20 @@ export async function PUT(
         await connectDB();
         const { id } = await params;
 
-        // 1. Buscar el registro de mantenimiento
         const maintenanceEntry = await Maintenance.findById(id);
         if (!maintenanceEntry) return NextResponse.json({ error: "Registro no encontrado" }, { status: 404 });
+        
         if (maintenanceEntry.status === 'Completado') {
             return NextResponse.json({ error: "Este registro ya fue finalizado" }, { status: 400 });
         }
 
-        // 2. Actualizar mantenimiento a "Completado"
+        // Actualizamos solo el estado del mantenimiento
         maintenanceEntry.status = 'Completado';
         maintenanceEntry.exitDate = new Date();
         await maintenanceEntry.save();
 
-        // 3. REGRESAR EL STOCK AL PRODUCTO
-        await Product.findByIdAndUpdate(maintenanceEntry.product, { 
-            $inc: { stock: maintenanceEntry.quantity } 
-        });
-
-        // 4. Registrar movimiento de entrada
-        await Movement.create({
-            productId: maintenanceEntry.product,
-            type: 'Entrada',
-            quantity: maintenanceEntry.quantity,
-            description: `Salida de Mantenimiento (Folio: ${id.substring(18)})`
-        });
+        // --- SE ELIMINÓ EL UPDATE DE STOCK ---
+        // --- SE ELIMINÓ EL MOVEMENT.CREATE ---
 
         return NextResponse.json({ success: true });
     } catch (error) {

@@ -7,17 +7,15 @@ export default function AdminPage() {
   const [initials, setInitials] = useState("...");
   const [menuOpen, setMenuOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
-  const prevCountRef = useRef(0); // Para comparar si llegaron nuevas
+  const prevCountRef = useRef(0); 
   const router = useRouter();
 
-  // Función para obtener conteo de pendientes
   const fetchPendingCount = async () => {
     try {
-      const res = await fetch('/api/requests'); // Usamos tu API de solicitudes
+      const res = await fetch('/api/requests'); 
       const data = await res.json();
       const count = data.filter((r: any) => r.status === 'Pendiente').length;
 
-      // Si el nuevo conteo es mayor al anterior, sonar alerta
       if (count > prevCountRef.current) {
         playNotificationSound();
       }
@@ -34,22 +32,12 @@ export default function AdminPage() {
       const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
       const oscillator = audioCtx.createOscillator();
       const gainNode = audioCtx.createGain();
-
-      // Cambiamos a 'triangle' para que sea más audible y "metálico"
       oscillator.type = 'triangle';
-
-      // Subimos la frecuencia a 880Hz (Nota La5) para que sea más chillón y difícil de ignorar
       oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
-
-      // Subimos el volumen inicial (0.4 es bastante fuerte, el máximo recomendado es 1.0)
       gainNode.gain.setValueAtTime(0.4, audioCtx.currentTime);
-
-      // Hacemos que el desvanecimiento sea un poco más lento (0.8s) para que se note más
       gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.8);
-
       oscillator.connect(gainNode);
       gainNode.connect(audioCtx.destination);
-
       oscillator.start();
       oscillator.stop(audioCtx.currentTime + 0.8);
     } catch (e) {
@@ -58,7 +46,6 @@ export default function AdminPage() {
   };
 
   useEffect(() => {
-    // 1. Cargar iniciales
     const userData = localStorage.getItem("user");
     if (userData) {
       try {
@@ -71,7 +58,6 @@ export default function AdminPage() {
       } catch (e) { setInitials("ADM"); }
     }
 
-    // 2. Ejecutar primer conteo y establecer intervalo (cada 10 segundos)
     fetchPendingCount();
     const interval = setInterval(fetchPendingCount, 10000);
     return () => clearInterval(interval);
@@ -100,7 +86,7 @@ export default function AdminPage() {
       desc: "Acceder al libro mayor de inventario. Buscar, filtrar y auditar.",
       icon: "solar:bell-bold",
       path: "/admin/requests",
-      isNotification: true, // Marcador para la lógica especial
+      isNotification: true,
     },
     {
       title: "Registrar operadores",
@@ -129,33 +115,45 @@ export default function AdminPage() {
   ];
 
   return (
-    <main className="min-h-screen bg-[#f4f7fa] p-8" onClick={() => setMenuOpen(false)}>
-      {/* Botón Perfil */}
-      <div className="flex justify-end mb-8 relative">
+    // Agregamos pb-20 para dar espacio abajo
+    <main className="min-h-screen bg-[#f4f7fa] pb-20" onClick={() => setMenuOpen(false)}>
+      <header className="flex justify-between items-center mb-8 p-4 bg-white/80 backdrop-blur-md border border-white shadow-sm">
+        <div className="flex items-center gap-2 px-2">
+          <div className="w-2 h-2 bg-[#0095ff] rounded-full animate-pulse" />
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Panel Administrativo</span>
+        </div>
+
         <div className="relative">
           <button
             onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }}
-            className="w-10 h-10 bg-[#0095ff] rounded-full flex items-center justify-center text-white font-bold text-xs shadow-lg uppercase hover:bg-blue-600 transition-colors"
+            className="w-10 h-10 bg-[#0095ff] rounded-full flex items-center justify-center text-white font-bold text-xs shadow-lg uppercase hover:scale-105 active:scale-95 transition-all border-2 border-white"
           >
             {initials}
           </button>
+
           {menuOpen && (
-            <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-100 py-2 z-50">
-              <button onClick={handleLogout} className="w-full px-4 py-3 text-left text-sm text-red-500 hover:bg-red-50 flex items-center gap-3 font-semibold transition-colors">
+            <div className="absolute right-0 mt-3 w-48 bg-white rounded-xl shadow-2xl border border-gray-100 py-2 z-50 animate-in fade-in zoom-in duration-200">
+              <div className="px-4 py-2 border-b border-gray-50 mb-1">
+                <p className="text-[10px] font-bold text-gray-400 uppercase">Opciones</p>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="w-full px-4 py-3 text-left text-sm text-red-500 hover:bg-red-50 flex items-center gap-3 font-semibold transition-colors"
+              >
                 <Icon icon="solar:logout-3-bold" className="text-xl" />
                 <span>Cerrar sesión</span>
               </button>
             </div>
           )}
         </div>
-      </div>
+      </header>
 
       <div className="text-center mb-12">
         <h1 className="text-3xl font-bold text-gray-800 mb-2">Resumen de Operaciones</h1>
         <div className="w-24 h-1 bg-blue-500 mx-auto rounded-full"></div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto px-6">
         {cards.map((card, index) => {
           const isRequestCard = card.isNotification;
           const hasAlert = isRequestCard && pendingCount > 0;
@@ -174,7 +172,6 @@ export default function AdminPage() {
                     }`}
                 />
 
-                {/* Contador en Rojo para Solicitudes */}
                 {hasAlert && (
                   <div className="absolute -top-2 -right-2 bg-red-600 text-white w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shadow-lg animate-pulse">
                     {pendingCount}
@@ -187,13 +184,18 @@ export default function AdminPage() {
                 <p className="text-gray-400 text-sm leading-relaxed">{card.desc}</p>
               </div>
 
-              {/* Efecto de fondo cuando hay alerta */}
               {hasAlert && (
                 <div className="absolute inset-0 bg-gradient-to-br from-red-100/20 to-transparent pointer-events-none" />
               )}
             </div>
           );
         })}
+      </div>
+
+      {/* Separación y Footer sutil al final */}
+      <div className="mt-20 flex flex-col items-center">
+        <div className="w-12 h-1 bg-gray-200 rounded-full mb-4"></div>
+        <p className="text-gray-300 text-[10px] font-bold uppercase tracking-[0.3em]">Sistema de Gestión de Almacén</p>
       </div>
     </main>
   );

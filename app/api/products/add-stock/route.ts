@@ -2,18 +2,24 @@ import { connectDB } from "@/app/lib/mongodb";
 import Product from "@/app/lib/models/Product";
 import Movement from "@/app/lib/models/Movement";
 import { NextResponse } from "next/server";
+import mongoose from "mongoose";
 
 export async function POST(req: Request) {
   try {
     await connectDB();
     const data = await req.json();
-    const { code, quantityToAdd } = data;
+    
+    // Recibimos también el operatorId desde el frontend
+    const { code, quantityToAdd, operatorId } = data;
 
     if (!code || !quantityToAdd || quantityToAdd <= 0) {
       return NextResponse.json({ error: "Datos incompletos o cantidad inválida" }, { status: 400 });
     }
 
-    // Usamos returnDocument: 'after' para evitar el warning de 'new'
+    if (!operatorId || !mongoose.Types.ObjectId.isValid(operatorId)) {
+        return NextResponse.json({ error: "ID de administrador no válido. Reinicie sesión." }, { status: 400 });
+    }
+
     const updatedProduct = await Product.findOneAndUpdate(
       { code: code.trim() },
       { $inc: { stock: quantityToAdd } },
@@ -25,11 +31,13 @@ export async function POST(req: Request) {
     }
 
     // REGISTRAMOS LA ENTRADA EN EL HISTORIAL
+    // Ahora incluimos el campo 'operator' que es obligatorio en tu modelo
     await Movement.create({
       productId: updatedProduct._id,
       type: 'Entrada',
       quantity: quantityToAdd,
-      description: 'Ajuste de stock manual'
+      description: 'Ajuste de stock manual (Administración)',
+      operator: new mongoose.Types.ObjectId(operatorId) 
     });
 
     return NextResponse.json({ 
@@ -38,8 +46,11 @@ export async function POST(req: Request) {
       newStock: updatedProduct.stock 
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error al añadir stock:", error);
-    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
+    return NextResponse.json({ 
+        error: "Error interno del servidor",
+        details: error.message 
+    }, { status: 500 });
   }
 }

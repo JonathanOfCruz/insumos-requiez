@@ -18,19 +18,16 @@ export async function GET() {
 }
 
 // POST: Ingresar producto a mantenimiento
+// ... (resto del código)
 export async function POST(req: Request) {
     try {
         await connectDB();
-        const { productId, quantity, observation } = await req.json();
+        const { productId, quantity, observation, operator } = await req.json();
 
-        // 1. Verificar stock actual del producto
         const product = await Product.findById(productId);
-        if (!product) return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 });
-        if (product.stock < quantity) {
-            return NextResponse.json({ error: `Stock insuficiente. Solo hay ${product.stock}` }, { status: 400 });
-        }
+        if (!product) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
-        // 2. Crear registro de mantenimiento
+        // Solo creamos el registro de mantenimiento
         const newMaintenance = await Maintenance.create({
             product: productId,
             quantity,
@@ -38,20 +35,12 @@ export async function POST(req: Request) {
             status: 'En Taller'
         });
 
-        // 3. DESCONTAR STOCK DEL PRODUCTO
-        await Product.findByIdAndUpdate(productId, { $inc: { stock: -quantity } });
-
-        // 4. Registrar el movimiento en el historial global
-        await Movement.create({
-            productId,
-            type: 'Salida',
-            quantity,
-            description: `Ingreso a Mantenimiento (Folio: ${newMaintenance._id.toString().substring(18)})`
-        });
+        // --- SE ELIMINÓ EL UPDATE DE STOCK ---
+        // --- SE ELIMINÓ EL MOVEMENT.CREATE ---
 
         return NextResponse.json(newMaintenance, { status: 201 });
     } catch (error) {
         console.error(error);
-        return NextResponse.json({ error: "Error al procesar ingreso" }, { status: 500 });
+        return NextResponse.json({ error: "Error al procesar" }, { status: 500 });
     }
 }

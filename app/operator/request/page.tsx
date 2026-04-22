@@ -26,7 +26,6 @@ export default function OperatorRequestPage() {
     const [initials, setInitials] = useState("...");
     const [operator, setOperator] = useState({ id: '', name: '', area: '' });
 
-    // ESTADOS DE SEGUIMIENTO (La Card depende de estos dos)
     const [activeRequestId, setActiveRequestId] = useState<string | null>(null);
     const [requestStatus, setRequestStatus] = useState<string | null>(null);
 
@@ -41,7 +40,6 @@ export default function OperatorRequestPage() {
     const [submitError, setSubmitError] = useState('');
     const [loadingSubmit, setLoadingSubmit] = useState(false);
 
-    // 1. FUNCIÓN DE CONSULTA (Polling) - Validada para evitar "undefined"
     const checkStatus = useCallback(async (id: string) => {
         if (!id || id === 'undefined' || id === 'null') return;
         try {
@@ -58,7 +56,6 @@ export default function OperatorRequestPage() {
         }
     }, [requestStatus]);
 
-    // 2. CONTROL DEL INTERVALO
     useEffect(() => {
         let interval: NodeJS.Timeout;
         if (activeRequestId && activeRequestId !== 'undefined' && requestStatus === 'Pendiente') {
@@ -67,7 +64,6 @@ export default function OperatorRequestPage() {
         return () => clearInterval(interval);
     }, [activeRequestId, requestStatus, checkStatus]);
 
-    // 3. CARGA DE PRODUCTOS
     const fetchProducts = useCallback(async () => {
         try {
             const res = await fetch('/api/products');
@@ -78,7 +74,6 @@ export default function OperatorRequestPage() {
         }
     }, []);
 
-    // 4. VERIFICACIÓN DE SESIÓN Y RECUPERACIÓN DE DATOS
     useEffect(() => {
         if (typeof window === "undefined") return;
         const userData = localStorage.getItem("user");
@@ -86,10 +81,15 @@ export default function OperatorRequestPage() {
 
         try {
             const user = JSON.parse(userData);
-            const opId = user._id || user.id || user.employeeNumber;
-            setOperator({ id: String(opId), name: user.name || 'Operador', area: user.area || 'General' });
+            // Capturamos el ID real de la base de datos (ObjectId)
+            const opId = user._id || user.id; 
+            
+            setOperator({ 
+                id: String(opId), 
+                name: user.name || 'Operador', 
+                area: user.area || 'General' 
+            });
 
-            // Recuperar ID guardado con limpieza estricta
             const savedId = localStorage.getItem("activeRequestId");
             const savedStatus = localStorage.getItem("activeRequestStatus");
 
@@ -132,7 +132,6 @@ export default function OperatorRequestPage() {
         setCode(''); setQuantity(''); setValidProduct(null);
     };
 
-    // 5. ENVÍO DE SOLICITUD - AQUÍ SE ACTIVA LA CARD
     const handleSubmitFinalRequest = async (e: React.MouseEvent) => {
         e.preventDefault();
         if (addedItems.length === 0) return;
@@ -144,15 +143,18 @@ export default function OperatorRequestPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    operatorId: operator.id,
-                    items: addedItems.map(i => ({ product: i._id, quantityRequested: i.quantity }))
+                    // ENVIAMOS EL OBJECTID DEL OPERADOR AQUÍ
+                    operatorId: operator.id, 
+                    items: addedItems.map(i => ({ 
+                        product: i._id, 
+                        quantityRequested: i.quantity 
+                    }))
                 }),
             });
 
             const data = await res.json();
 
             if (res.ok) {
-                // CAMBIO AQUÍ: Tu API devuelve "requestId"
                 const newId = data.requestId || data._id || data.id;
 
                 if (newId) {
@@ -162,7 +164,6 @@ export default function OperatorRequestPage() {
                     setRequestStatus('Pendiente');
                     localStorage.setItem("activeRequestId", stringId);
                     localStorage.setItem("activeRequestStatus", 'Pendiente');
-                    // La Card aparecerá ahora porque activeRequestId ya no es nulo
                 } else {
                     setSubmitError("Solicitud enviada, pero el servidor no retornó el ID.");
                 }
@@ -187,7 +188,6 @@ export default function OperatorRequestPage() {
 
     return (
         <main className="min-h-screen bg-[#f4f7fa] p-6 lg:p-10">
-            {/* Header con botón de salir */}
             <div className="flex justify-end items-center mb-8 gap-6">
                 <div className="flex gap-4 items-center border border-gray-100 bg-white p-4 rounded-xl shadow-sm">
                     <div className="w-10 h-10 bg-[#0095ff] rounded-full flex items-center justify-center text-white font-bold text-xs tracking-wider">{initials}</div>
@@ -206,8 +206,6 @@ export default function OperatorRequestPage() {
 
             <div className="flex flex-col lg:flex-row gap-10">
                 <div className="lg:w-1/3 flex flex-col gap-8">
-
-                    {/* --- CARD DE ESTADO (Prioritaria) --- */}
                     {activeRequestId && activeRequestId !== 'undefined' && (
                         <div className={`p-8 rounded-2xl shadow-xl border-2 transition-all duration-500 transform scale-100 ${requestStatus === 'Pendiente' ? 'bg-blue-50 border-blue-200' :
                                 requestStatus === 'Aprobada' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
@@ -235,7 +233,6 @@ export default function OperatorRequestPage() {
                         </div>
                     )}
 
-                    {/* Formulario e Inputs */}
                     <div className={`bg-white p-8 rounded-2xl shadow-sm border border-gray-100 relative transition-opacity ${activeRequestId && requestStatus === 'Pendiente' ? 'opacity-30 pointer-events-none' : 'opacity-100'}`}>
                         {loadingSearch && <div className="absolute inset-0 bg-white/70 flex items-center justify-center z-10 rounded-2xl"><Icon icon="solar:restart-linear" className="text-4xl text-blue-500 animate-spin" /></div>}
                         <h3 className="font-bold text-gray-800 mb-6">Nuevo Insumo</h3>
@@ -262,7 +259,6 @@ export default function OperatorRequestPage() {
                         </div>
                     </div>
 
-                    {/* Resumen Final */}
                     <div className={`bg-white p-8 rounded-2xl shadow-sm border border-gray-100 transition-opacity ${activeRequestId && requestStatus === 'Pendiente' ? 'opacity-30 pointer-events-none' : 'opacity-100'}`}>
                         <h3 className="font-bold text-gray-800 mb-6 text-xl">Confirmar</h3>
                         <div className="space-y-3 mb-8 max-h-64 overflow-y-auto pr-2">
@@ -284,7 +280,6 @@ export default function OperatorRequestPage() {
                     </div>
                 </div>
 
-                {/* Catálogo (Derecha) */}
                 <div className="lg:w-2/3 bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
                     <div className="flex justify-between items-center mb-8">
                         <h3 className="text-2xl font-bold text-gray-800">Catálogo</h3>

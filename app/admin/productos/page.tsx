@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Icon } from '@iconify/react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -10,14 +10,8 @@ interface IProduct {
     name: string;
     stock: number;
     category: string;
-}
-
-interface IMovement {
-    id: string;
-    type: 'Entrada' | 'Salida';
-    quantity: number;
-    date: string;
-    description: string;
+    totalEntradas?: number;
+    totalSalidas?: number;
 }
 
 export default function ProductosPage() {
@@ -36,31 +30,25 @@ export default function ProductosPage() {
     const [products, setProducts] = useState<IProduct[]>([]);
     const [tableLoading, setTableLoading] = useState(true);
 
-    // NUEVO: Estados de Búsqueda y Filtros
+    // Búsqueda y Filtros
     const [searchTerm, setSearchTerm] = useState('');
     const [filterCode, setFilterCode] = useState('');
     const [filterName, setFilterName] = useState('');
     const [filterCategory, setFilterCategory] = useState('');
     
-    // Estado para controlar qué input de filtro está visible
     const [showFilters, setShowFilters] = useState<{ [key: string]: boolean }>({
         code: false,
         name: false,
         category: false
     });
 
-    // NUEVO: Estados de Paginación Avanzada
+    // Paginación
     const [currentPage, setCurrentPage] = useState(1);
     const [rowsPerPage, setRowsPerPage] = useState(25);
 
     // Estados Edición
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editForm, setEditForm] = useState<IProduct | null>(null);
-
-    // Estados para Card de Historial
-    const [selectedProduct, setSelectedProduct] = useState<IProduct | null>(null);
-    const [history, setHistory] = useState<IMovement[]>([]);
-    const [historyLoading, setHistoryLoading] = useState(false);
 
     const categories = ['Herramienta', 'Equipo', 'Insumos'];
 
@@ -84,11 +72,28 @@ export default function ProductosPage() {
         try {
             const res = await fetch('/api/products');
             const data = await res.json();
-            if (res.ok) setProducts(data);
+            
+            if (res.ok) {
+                // Obtenemos los totales de movimientos para cada producto
+                const productsWithStats = await Promise.all(data.map(async (p: IProduct) => {
+                    const resHist = await fetch(`/api/history/${p._id}`);
+                    const historyData = await resHist.json();
+                    
+                    const entradas = historyData
+                        .filter((m: any) => m.type === 'Entrada')
+                        .reduce((acc: number, cur: any) => acc + cur.quantity, 0);
+                    
+                    const salidas = historyData
+                        .filter((m: any) => m.type === 'Salida')
+                        .reduce((acc: number, cur: any) => acc + cur.quantity, 0);
+
+                    return { ...p, totalEntradas: entradas, totalSalidas: salidas };
+                }));
+                setProducts(productsWithStats);
+            }
         } catch (err) { console.error(err); } finally { setTableLoading(false); }
     };
 
-    // --- LÓGICA DE FILTRADO Y ORDENAMIENTO ---
     const processedProducts = products
         .filter(product => {
             const matchesGlobal = searchTerm === '' || 
@@ -113,27 +118,6 @@ export default function ProductosPage() {
     const indexOfLastItem = currentPage * rowsPerPage;
     const indexOfFirstItem = indexOfLastItem - rowsPerPage;
     const currentItems = processedProducts.slice(indexOfFirstItem, indexOfLastItem);
-
-    const openHistory = async (product: IProduct) => {
-        setSelectedProduct(product);
-        setHistoryLoading(true);
-        try {
-            const res = await fetch(`/api/history/${product._id}`);
-            if (!res.ok) throw new Error("Error en la red");
-            const data = await res.json();
-            const mappedMovements = data.map((mov: any) => ({
-                id: mov._id,
-                type: mov.type,
-                quantity: mov.quantity,
-                date: new Date(mov.createdAt).toLocaleDateString('es-MX', {
-                    day: '2-digit', month: '2-digit', year: 'numeric',
-                    hour: '2-digit', minute: '2-digit'
-                }),
-                description: mov.description
-            }));
-            setHistory(mappedMovements);
-        } catch (err) { setHistory([]); } finally { setHistoryLoading(false); }
-    };
 
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -182,50 +166,6 @@ export default function ProductosPage() {
 
     return (
         <main className="min-h-screen bg-[#f4f7fa] p-6 lg:p-10" onClick={() => setMenuOpen(false)}>
-            {selectedProduct && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-                    <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-sm overflow-hidden border border-white animate-in zoom-in duration-300">
-                        <div className="bg-[#0095ff] p-6 text-white flex justify-between items-start">
-                            <div>
-                                <h3 className="text-2xl font-black">{selectedProduct.code}</h3>
-                                <p className="text-xs opacity-80">{selectedProduct.name}</p>
-                            </div>
-                            <button onClick={() => setSelectedProduct(null)} className="hover:scale-110 transition-transform">
-                                <Icon icon="solar:close-circle-bold" className="text-3xl" />
-                            </button>
-                        </div>
-                        <div className="p-6">
-                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Movimientos Recientes</p>
-                            <div className="space-y-3 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
-                                {historyLoading ? (
-                                    <p className="text-center py-4 text-xs text-gray-400 animate-pulse">Consultando base de datos...</p>
-                                ) : history.length > 0 ? (
-                                    history.map((mov) => (
-                                        <div key={mov.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100">
-                                            <div className="flex items-center gap-3">
-                                                <div className={`p-2 rounded-lg ${mov.type === 'Entrada' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
-                                                    <Icon icon={mov.type === 'Entrada' ? "solar:import-bold" : "solar:export-bold"} />
-                                                </div>
-                                                <div>
-                                                    <p className="text-xs font-bold text-gray-700">{mov.description}</p>
-                                                    <p className="text-[10px] text-gray-400">{mov.date}</p>
-                                                </div>
-                                            </div>
-                                            <p className={`font-black ${mov.type === 'Entrada' ? 'text-green-600' : 'text-red-600'}`}>
-                                                {mov.type === 'Entrada' ? '+' : '-'}{mov.quantity}
-                                            </p>
-                                        </div>
-                                    ))
-                                ) : (
-                                    <p className="text-center py-4 text-xs text-gray-400">Sin movimientos</p>
-                                )}
-                            </div>
-                            <button onClick={() => setSelectedProduct(null)} className="w-full mt-6 py-3 bg-slate-800 text-white rounded-xl font-bold text-sm hover:bg-slate-900 transition-colors">Cerrar</button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
             <div className="flex justify-between items-center mb-8 relative">
                 <div className="text-sm text-gray-500 flex items-center gap-2">
                     <Link href="/admin" className="hover:text-blue-600 transition-colors font-medium">Inicio</Link>
@@ -292,18 +232,17 @@ export default function ProductosPage() {
                             <input type="text" placeholder="Búsqueda global..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
                         </div>
 
-                        <div className="flex items-center gap-4 text-gray-600 text-sm font-medium select-none">
-                            <div className="flex items-center border border-gray-300 rounded-lg px-3 py-1.5 bg-white focus-within:ring-2 focus-within:ring-blue-100 transition-all">
-                                <select value={rowsPerPage} onChange={(e) => setRowsPerPage(Number(e.target.value))} className="bg-transparent outline-none cursor-pointer appearance-none pr-3 text-gray-700">
+                        <div className="flex items-center gap-4 text-gray-600 text-sm font-medium">
+                            <div className="flex items-center border border-gray-300 rounded-lg px-3 py-1.5 bg-white">
+                                <select value={rowsPerPage} onChange={(e) => setRowsPerPage(Number(e.target.value))} className="bg-transparent outline-none cursor-pointer">
                                     <option value={5}>5</option><option value={10}>10</option><option value={25}>25</option><option value={50}>50</option>
                                 </select>
-                                <Icon icon="solar:alt-arrow-down-bold" className="text-gray-500 text-xs pointer-events-none" />
                             </div>
-                            <span className="text-gray-700">{totalItems === 0 ? 0 : indexOfFirstItem + 1} - {Math.min(indexOfLastItem, totalItems)} of {totalItems}</span>
+                            <span>{totalItems === 0 ? 0 : indexOfFirstItem + 1} - {Math.min(indexOfLastItem, totalItems)} of {totalItems}</span>
                             <button onClick={fetchProducts} className="hover:text-blue-500 transition-colors p-1"><Icon icon="solar:refresh-bold" className="text-xl" /></button>
                             <div className="flex items-center gap-1">
-                                <button onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1} className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded disabled:opacity-30 transition-all"><Icon icon="solar:alt-arrow-left-bold" className="text-xl" /></button>
-                                <button onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages || totalPages === 0} className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded disabled:opacity-30 transition-all"><Icon icon="solar:alt-arrow-right-bold" className="text-xl" /></button>
+                                <button onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1} className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-30"><Icon icon="solar:alt-arrow-left-bold" className="text-xl" /></button>
+                                <button onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages || totalPages === 0} className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-30"><Icon icon="solar:alt-arrow-right-bold" className="text-xl" /></button>
                             </div>
                         </div>
                     </div>
@@ -312,52 +251,32 @@ export default function ProductosPage() {
                         <thead className="text-[11px] text-gray-400 uppercase">
                             <tr>
                                 <th className="px-4 py-3 min-w-[120px]">
-                                    <div className="flex items-center gap-2">
-                                        <span>Código</span>
-                                        <button onClick={() => toggleFilter('code')} className="text-gray-600 hover:text-blue-500 transition-colors">
-                                            <Icon icon="solar:filter-bold-duotone" />
-                                        </button>
-                                    </div>
-                                    {showFilters.code && (
-                                        <input autoFocus type="text" placeholder="..." value={filterCode} onChange={e => setFilterCode(e.target.value)} className="mt-2 w-full text-[10px] p-1 border border-gray-200 rounded font-normal normal-case outline-none focus:border-blue-400 animate-in fade-in zoom-in duration-200" />
-                                    )}
+                                    <div className="flex items-center gap-2"><span>Código</span><button onClick={() => toggleFilter('code')}><Icon icon="solar:filter-bold-duotone" /></button></div>
+                                    {showFilters.code && <input autoFocus type="text" value={filterCode} onChange={e => setFilterCode(e.target.value)} className="mt-2 w-full text-[10px] p-1 border border-gray-200 rounded outline-none" />}
                                 </th>
                                 <th className="px-4 py-3 min-w-[150px]">
-                                    <div className="flex items-center gap-2">
-                                        <span>Producto</span>
-                                        <button onClick={() => toggleFilter('name')} className="text-gray-600 hover:text-blue-500 transition-colors">
-                                            <Icon icon="solar:filter-bold-duotone" />
-                                        </button>
-                                    </div>
-                                    {showFilters.name && (
-                                        <input autoFocus type="text" placeholder="..." value={filterName} onChange={e => setFilterName(e.target.value)} className="mt-2 w-full text-[10px] p-1 border border-gray-200 rounded font-normal normal-case outline-none focus:border-blue-400 animate-in fade-in zoom-in duration-200" />
-                                    )}
+                                    <div className="flex items-center gap-2"><span>Producto</span><button onClick={() => toggleFilter('name')}><Icon icon="solar:filter-bold-duotone" /></button></div>
+                                    {showFilters.name && <input autoFocus type="text" value={filterName} onChange={e => setFilterName(e.target.value)} className="mt-2 w-full text-[10px] p-1 border border-gray-200 rounded outline-none" />}
                                 </th>
-                                <th className="px-4 py-3 text-center">Stock</th>
+                                <th className="px-4 py-3 text-center text-green-600">Entradas</th>
+                                <th className="px-4 py-3 text-center text-red-600">Salidas</th>
+                                <th className="px-4 py-3 text-center">Stock Actual</th>
                                 <th className="px-4 py-3 min-w-[120px]">
-                                    <div className="flex items-center gap-2">
-                                        <span>Categoría</span>
-                                        <button onClick={() => toggleFilter('category')} className="text-gray-600 hover:text-blue-500 transition-colors">
-                                            <Icon icon="solar:filter-bold-duotone" />
-                                        </button>
-                                    </div>
-                                    {showFilters.category && (
-                                        <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} className="mt-2 w-full text-[10px] p-1 border border-gray-200 rounded font-normal normal-case outline-none focus:border-blue-400 animate-in fade-in zoom-in duration-200">
-                                            <option value="">Todas</option>
-                                            {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                                        </select>
-                                    )}
+                                    <div className="flex items-center gap-2"><span>Categoría</span><button onClick={() => toggleFilter('category')}><Icon icon="solar:filter-bold-duotone" /></button></div>
+                                    {showFilters.category && <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} className="mt-2 w-full text-[10px] p-1 border border-gray-200 rounded outline-none"><option value="">Todas</option>{categories.map(c => <option key={c} value={c}>{c}</option>)}</select>}
                                 </th>
                                 <th className="px-4 py-3 text-center">Acciones</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
                             {!tableLoading && currentItems.map((product) => (
-                                <tr key={product._id} className="bg-white even:bg-slate-50 hover:bg-blue-50 transition-colors group">
+                                <tr key={product._id} className="bg-white hover:bg-blue-50/50 transition-colors group">
                                     {editingId === product._id ? (
                                         <>
                                             <td className="px-4 py-4"><input className="w-full bg-transparent border-b border-blue-400 outline-none font-bold" value={editForm?.code} onChange={e => setEditForm({ ...editForm!, code: e.target.value })} /></td>
                                             <td className="px-4 py-4"><input className="w-full bg-transparent border-b border-blue-400 outline-none" value={editForm?.name} onChange={e => setEditForm({ ...editForm!, name: e.target.value })} /></td>
+                                            <td className="px-4 py-4 text-center font-bold text-green-600">{product.totalEntradas || 0}</td>
+                                            <td className="px-4 py-4 text-center font-bold text-red-600">{product.totalSalidas || 0}</td>
                                             <td className="px-4 py-4"><input type="number" className="w-full bg-transparent border-b border-blue-400 outline-none text-center" value={editForm?.stock} onChange={e => setEditForm({ ...editForm!, stock: parseInt(e.target.value) })} /></td>
                                             <td className="px-4 py-4">
                                                 <select className="bg-transparent border-b border-blue-400 outline-none text-[10px] font-bold uppercase" value={editForm?.category} onChange={e => setEditForm({ ...editForm!, category: e.target.value })}>
@@ -371,11 +290,11 @@ export default function ProductosPage() {
                                         </>
                                     ) : (
                                         <>
-                                            <td className="px-4 py-4">
-                                                <button onClick={() => openHistory(product)} className="font-black text-blue-600 hover:underline underline-offset-4 px-2 py-1 bg-blue-50 rounded-lg">{product.code}</button>
-                                            </td>
-                                            <td className="px-4 py-4 text-gray-600 font-medium">{product.name}</td>
-                                            <td className="px-4 py-4 text-center text-gray-800 font-bold">{product.stock}</td>
+                                            <td className="px-4 py-4 text-xs font-black text-blue-600">{product.code}</td>
+                                            <td className="px-4 py-4 text-gray-600 font-medium text-xs">{product.name}</td>
+                                            <td className="px-4 py-4 text-center text-green-600 font-bold text-xs">{product.totalEntradas || 0}</td>
+                                            <td className="px-4 py-4 text-center text-red-600 font-bold text-xs">{product.totalSalidas || 0}</td>
+                                            <td className="px-4 py-4 text-center text-gray-800 font-bold text-xs">{product.stock}</td>
                                             <td className="px-4 py-4">
                                                 <span className="bg-white border border-gray-200 text-gray-500 text-[9px] px-2 py-1 rounded-full font-black uppercase">{product.category}</span>
                                             </td>

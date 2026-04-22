@@ -120,6 +120,12 @@ export default function AdminPage() {
       icon: "ix:maintenance",
       path: "/admin/mantenimiento",
     },
+    {
+      title: "Control de Entradas y Salidas",
+      desc: "Monitorear equipos y herramientas en movimientos de stock.",
+      icon: "mingcute:inventory-line",
+      path: "/admin/entrada-salida",
+    },
   ];
 
   return (

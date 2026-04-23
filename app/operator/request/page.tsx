@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react'; // Se agrega useMemo para optimizar el filtrado
 import { Icon } from '@iconify/react';
 import { useRouter } from 'next/navigation';
 
@@ -31,6 +31,10 @@ export default function OperatorRequestPage() {
 
     const [dbProducts, setDbProducts] = useState<IProduct[]>([]);
     const [loadingTable, setLoadingTable] = useState(true);
+    
+    // --- NUEVO ESTADO PARA BÚSQUEDA ---
+    const [catalogSearch, setCatalogSearch] = useState('');
+
     const [code, setCode] = useState('');
     const [quantity, setQuantity] = useState('');
     const [loadingSearch, setLoadingSearch] = useState(false);
@@ -39,6 +43,14 @@ export default function OperatorRequestPage() {
     const [addedItems, setAddedItems] = useState<ITempItem[]>([]);
     const [submitError, setSubmitError] = useState('');
     const [loadingSubmit, setLoadingSubmit] = useState(false);
+
+    // --- LÓGICA DE FILTRADO PARA LA TABLA ---
+    const filteredProducts = useMemo(() => {
+        return dbProducts.filter(product => 
+            product.code.toLowerCase().includes(catalogSearch.toLowerCase()) ||
+            product.name.toLowerCase().includes(catalogSearch.toLowerCase())
+        );
+    }, [dbProducts, catalogSearch]);
 
     const checkStatus = useCallback(async (id: string) => {
         if (!id || id === 'undefined' || id === 'null') return;
@@ -81,7 +93,6 @@ export default function OperatorRequestPage() {
 
         try {
             const user = JSON.parse(userData);
-            // Capturamos el ID real de la base de datos (ObjectId)
             const opId = user._id || user.id; 
             
             setOperator({ 
@@ -143,7 +154,6 @@ export default function OperatorRequestPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    // ENVIAMOS EL OBJECTID DEL OPERADOR AQUÍ
                     operatorId: operator.id, 
                     items: addedItems.map(i => ({ 
                         product: i._id, 
@@ -188,6 +198,7 @@ export default function OperatorRequestPage() {
 
     return (
         <main className="min-h-screen bg-[#f4f7fa] p-6 lg:p-10">
+            {/* Header */}
             <div className="flex justify-end items-center mb-8 gap-6">
                 <div className="flex gap-4 items-center border border-gray-100 bg-white p-4 rounded-xl shadow-sm">
                     <div className="w-10 h-10 bg-[#0095ff] rounded-full flex items-center justify-center text-white font-bold text-xs tracking-wider">{initials}</div>
@@ -205,6 +216,7 @@ export default function OperatorRequestPage() {
             </div>
 
             <div className="flex flex-col lg:flex-row gap-10">
+                {/* Columna Izquierda: Formulario y Confirmación */}
                 <div className="lg:w-1/3 flex flex-col gap-8">
                     {activeRequestId && activeRequestId !== 'undefined' && (
                         <div className={`p-8 rounded-2xl shadow-xl border-2 transition-all duration-500 transform scale-100 ${requestStatus === 'Pendiente' ? 'bg-blue-50 border-blue-200' :
@@ -280,11 +292,28 @@ export default function OperatorRequestPage() {
                     </div>
                 </div>
 
+                {/* Columna Derecha: Catálogo con Búsqueda */}
                 <div className="lg:w-2/3 bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
-                    <div className="flex justify-between items-center mb-8">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
                         <h3 className="text-2xl font-bold text-gray-800">Catálogo</h3>
-                        <span className="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">{dbProducts.length} productos</span>
+                        
+                        {/* --- NUEVO INPUT DE BÚSQUEDA --- */}
+                        <div className="relative w-full sm:w-64">
+                            <Icon icon="solar:magnifer-linear" className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg" />
+                            <input 
+                                type="text"
+                                placeholder="Buscar código o nombre..."
+                                value={catalogSearch}
+                                onChange={(e) => setCatalogSearch(e.target.value)}
+                                className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-gray-700"
+                            />
+                        </div>
+
+                        <span className="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">
+                            {filteredProducts.length} productos
+                        </span>
                     </div>
+
                     <div className="overflow-x-auto">
                         {loadingTable ? (
                             <div className="py-20 text-center"><Icon icon="solar:restart-linear" className="animate-spin text-4xl text-blue-500 mx-auto" /></div>
@@ -298,7 +327,7 @@ export default function OperatorRequestPage() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
-                                    {dbProducts.map((product) => (
+                                    {filteredProducts.map((product) => (
                                         <tr key={product._id} className="hover:bg-gray-50/50 transition-colors">
                                             <td className="px-4 py-5 font-bold text-gray-700">{product.code}</td>
                                             <td className="px-4 py-5 text-gray-500">{product.name}</td>
@@ -307,6 +336,11 @@ export default function OperatorRequestPage() {
                                             </td>
                                         </tr>
                                     ))}
+                                    {filteredProducts.length === 0 && (
+                                        <tr>
+                                            <td colSpan={3} className="py-10 text-center text-gray-400 italic">No se encontraron coincidencias</td>
+                                        </tr>
+                                    )}
                                 </tbody>
                             </table>
                         )}

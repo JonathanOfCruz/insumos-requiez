@@ -1,8 +1,9 @@
 "use client";
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Icon } from '@iconify/react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import * as XLSX from 'xlsx'; // Asegúrate de que la librería esté instalada
 
 interface IMaintenance {
     _id: string;
@@ -69,6 +70,26 @@ export default function MantenimientoPage() {
         }
     }, []);
 
+    // --- FUNCIÓN PARA EXPORTAR A EXCEL ---
+    const exportToExcel = () => {
+        if (maintenanceList.length === 0) return alert("No hay registros para exportar");
+
+        const dataToExport = maintenanceList.map(m => ({
+            "Código": m.product?.code || 'N/A',
+            "Producto": m.product?.name || '---',
+            "Cantidad": m.quantity,
+            "Fecha Ingreso": new Date(m.entryDate).toLocaleDateString('es-MX'),
+            "Fecha Salida": m.exitDate ? new Date(m.exitDate).toLocaleDateString('es-MX') : 'En taller',
+            "Estado": m.status,
+            "Observación": m.observation
+        }));
+
+        const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Mantenimiento");
+        XLSX.writeFile(workbook, `Reporte_Mantenimiento_${new Date().toLocaleDateString()}.xlsx`);
+    };
+
     const handleLogout = () => {
         localStorage.removeItem("user");
         router.push("/");
@@ -117,10 +138,8 @@ export default function MantenimientoPage() {
 
     return (
         <main className="min-h-screen bg-[#f4f7fa] pb-20" onClick={() => setMenuOpen(false)}>
-            {/* Header Persistente */}
             <header className="flex justify-between items-center mb-8 p-4 bg-white/80 backdrop-blur-md border-b border-white shadow-sm sticky top-0 z-50">
                 <div className="flex items-center gap-4">
-                    
                     <div className="hidden md:flex items-center gap-2">
                         <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
                         <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Taller de Equipos</span>
@@ -207,7 +226,18 @@ export default function MantenimientoPage() {
 
                     {/* Tabla de Mantenimiento */}
                     <div className="lg:col-span-3 bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
-                        <h2 className="text-lg font-black text-gray-800 mb-6 uppercase tracking-tighter">Historial y Estado de Taller</h2>
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-lg font-black text-gray-800 uppercase tracking-tighter">Historial y Estado de Taller</h2>
+                            {/* BOTÓN DE EXCEL AGREGADO AQUÍ */}
+                            <button 
+                                onClick={exportToExcel}
+                                className="bg-green-50 text-green-600 px-4 py-2 rounded-xl border border-green-100 hover:bg-green-600 hover:text-white transition-all font-bold text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-sm"
+                            >
+                                <Icon icon="solar:file-download-bold" className="text-lg" />
+                                Exportar
+                            </button>
+                        </div>
+
                         <div className="overflow-x-auto">
                             <table className="w-full text-left text-sm">
                                 <thead>

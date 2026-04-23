@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { Icon } from '@iconify/react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import * as XLSX from 'xlsx'; // Asegúrate de tener instalada la librería xlsx
 
 interface IMovement {
     _id: string;
@@ -25,11 +26,9 @@ export default function ControlMovimientosPage() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
 
-    // --- ESTADOS DE FILTRO POR PRODUCTO ---
     const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
     const [showProductFilter, setShowProductFilter] = useState(false);
 
-    // --- ESTADOS DE PAGINACIÓN ---
     const [currentPage, setCurrentPage] = useState(1);
     const [rowsPerPage, setRowsPerPage] = useState(25);
 
@@ -110,6 +109,27 @@ export default function ControlMovimientosPage() {
         return matchesSearch && matchesProductFilter;
     });
 
+    // --- FUNCIÓN PARA EXPORTAR A EXCEL ---
+    const exportToExcel = () => {
+        if (filteredMovements.length === 0) return alert("No hay datos para exportar");
+
+        const dataToExport = filteredMovements.map(mov => ({
+            "Código SKU": mov.productCode,
+            "Producto": mov.productName,
+            "Tipo": mov.type,
+            "Cantidad": mov.type === 'Entrada' ? mov.quantity : -mov.quantity,
+            "Operador": mov.operator,
+            "Fecha": new Date(mov.createdAt).toLocaleDateString('es-MX'),
+            "Hora": new Date(mov.createdAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
+            "Descripción": mov.description
+        }));
+
+        const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Historial");
+        XLSX.writeFile(workbook, `Bitacora_Movimientos_${new Date().toLocaleDateString()}.xlsx`);
+    };
+
     const totalPages = Math.ceil(filteredMovements.length / rowsPerPage);
     const currentItems = filteredMovements.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
 
@@ -118,7 +138,6 @@ export default function ControlMovimientosPage() {
             setMenuOpen(false);
             setShowProductFilter(false);
         }}>
-            {/* Header */}
             <header className="flex justify-between items-center mb-8 p-4 bg-white/80 backdrop-blur-md border-b border-white shadow-sm sticky top-0 z-50">
                 <div className="flex items-center gap-4">
                     <div className="hidden md:flex items-center gap-2">
@@ -155,7 +174,6 @@ export default function ControlMovimientosPage() {
                         </div>
                     )}
 
-                    {/* BARRA DE HERRAMIENTAS */}
                     <div className="p-6 border-b border-gray-100 flex flex-col xl:flex-row justify-between items-center gap-4 bg-white">
                         <div className="flex flex-col md:flex-row items-center gap-4 w-full xl:w-auto">
                             <div className="relative w-full md:w-72">
@@ -168,9 +186,17 @@ export default function ControlMovimientosPage() {
                                     className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                                 />
                             </div>
+
+                            {/* Botón de Excel */}
+                            <button 
+                                onClick={exportToExcel}
+                                className="bg-green-50 text-green-600 px-5 py-2 rounded-xl border border-green-100 hover:bg-green-600 hover:text-white transition-all font-black text-[10px] uppercase tracking-wider flex items-center gap-2 shadow-sm"
+                            >
+                                <Icon icon="solar:file-download-bold" className="text-lg" />
+                                Exportar Excel
+                            </button>
                         </div>
 
-                        {/* Paginación */}
                         <div className="flex items-center gap-4 text-gray-600 text-sm font-medium">
                             <div className="flex items-center border border-gray-300 rounded-lg px-3 py-1.5 bg-white">
                                 <select
@@ -209,7 +235,6 @@ export default function ControlMovimientosPage() {
                         <table className="w-full text-sm text-left border-separate border-spacing-0">
                             <thead>
                                 <tr className="text-[11px] uppercase text-gray-400 tracking-widest font-bold bg-white">
-                                    {/* COLUMNA PRODUCTO CON ICONO DE FILTRO INTEGRADO */}
                                     <th className="px-8 py-5 border-b border-gray-50 relative">
                                         <div className="flex items-center gap-2">
                                             <span>Producto</span>
@@ -221,7 +246,6 @@ export default function ControlMovimientosPage() {
                                             </button>
                                         </div>
 
-                                        {/* MENÚ DESPLEGABLE DEBAJO DEL TEXTO */}
                                         {showProductFilter && (
                                             <div
                                                 className="absolute left-8 mt-2 w-64 bg-white border border-gray-100 rounded-2xl shadow-2xl z-[60] py-3 animate-in fade-in zoom-in duration-150 normal-case tracking-normal"

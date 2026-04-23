@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { Icon } from '@iconify/react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+// 1. Importar la librería xlsx
+import * as XLSX from 'xlsx';
 
 interface IProduct {
     _id: string;
@@ -117,6 +119,32 @@ export default function ProductosPage() {
             return matchesGlobal && matchesCode && matchesName && matchesCategory;
         })
         .sort((a, b) => a._id.localeCompare(b._id));
+
+    // --- NUEVA FUNCIÓN PARA EXPORTAR A EXCEL ---
+    const exportToExcel = () => {
+        if (processedProducts.length === 0) {
+            alert("No hay datos para exportar con los filtros actuales.");
+            return;
+        }
+
+        // Mapear los datos para que tengan nombres de columna limpios en el Excel
+        const dataToExport = processedProducts.map(p => ({
+            "Código": p.code,
+            "Producto": p.name,
+            "Entradas": p.totalEntradas || 0,
+            "Salidas": p.totalSalidas || 0,
+            "Stock Actual": p.stock,
+            "Categoría": p.category
+        }));
+
+        // Crear el libro y la hoja
+        const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Inventario");
+
+        // Generar archivo y descargar
+        XLSX.writeFile(workbook, `Reporte_Inventario_${new Date().toLocaleDateString()}.xlsx`);
+    };
 
     useEffect(() => {
         setCurrentPage(1);
@@ -301,6 +329,16 @@ export default function ProductosPage() {
                             </div>
 
                             <div className="flex items-center gap-4 text-gray-600 text-sm font-medium">
+                                {/* BOTÓN DE EXCEL AGREGADO AQUÍ */}
+                                <button 
+                                    onClick={exportToExcel}
+                                    className="flex items-center gap-2 bg-green-50 text-green-600 px-4 py-2 rounded-xl border border-green-100 hover:bg-green-600 hover:text-white transition-all font-bold text-xs shadow-sm"
+                                    title="Exportar a Excel"
+                                >
+                                    <Icon icon="solar:file-download-bold" className="text-lg" />
+                                    <span>Exportar</span>
+                                </button>
+
                                 <div className="flex items-center border border-gray-300 rounded-lg px-3 py-1.5 bg-white shadow-sm">
                                     <select value={rowsPerPage} onChange={(e) => setRowsPerPage(Number(e.target.value))} className="bg-transparent outline-none cursor-pointer text-xs font-bold">
                                         <option value={5}>5</option><option value={10}>10</option><option value={25}>25</option><option value={50}>50</option>
@@ -316,6 +354,7 @@ export default function ProductosPage() {
                         </div>
 
                         <table className="w-full text-sm text-left border-separate border-spacing-0">
+                            {/* ... (El resto de la tabla permanece igual) ... */}
                             <thead className="text-[11px] text-gray-400 uppercase tracking-widest font-bold">
                                 <tr>
                                     <th className="px-4 py-3 min-w-[120px] relative">

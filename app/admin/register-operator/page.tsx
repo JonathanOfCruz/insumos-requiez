@@ -136,7 +136,7 @@ export default function RegisterOperatorPage() {
                   value={employeeNumber}
                   onChange={(e) => setEmployeeNumber(e.target.value)}
                   placeholder="Ingresa el numero de empleado" 
-                  className="w-full outline-none text-gray-800 placeholder:text-gray-400 font-medium bg-transparent"
+                  className="w-full outline-none text-gray-800 placeholder:text-gray-600 font-medium bg-transparent"
                   required
                 />
               </div>
@@ -151,7 +151,7 @@ export default function RegisterOperatorPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Ingresa el nombre" 
-                  className="w-full outline-none text-gray-800 placeholder:text-gray-400 font-medium bg-transparent"
+                  className="w-full outline-none text-gray-800 placeholder:text-gray-600 font-medium bg-transparent"
                   required
                 />
               </div>

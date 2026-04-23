@@ -25,9 +25,15 @@ export default function ControlMovimientosPage() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
 
+    // --- ESTADOS DE FILTRO POR PRODUCTO ---
+    const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
+    const [showProductFilter, setShowProductFilter] = useState(false);
+
     // --- ESTADOS DE PAGINACIÓN ---
     const [currentPage, setCurrentPage] = useState(1);
     const [rowsPerPage, setRowsPerPage] = useState(25);
+
+    const uniqueProducts = Array.from(new Set(movements.map(m => m.productCode))).filter(Boolean).sort();
 
     useEffect(() => {
         loadData();
@@ -93,18 +99,25 @@ export default function ControlMovimientosPage() {
 
     const filteredMovements = movements.filter((mov) => {
         const term = searchTerm.toLowerCase().trim();
-        return (
+        const matchesSearch = (
             mov.productCode?.toLowerCase().includes(term) ||
             mov.productName?.toLowerCase().includes(term) ||
             mov.operator?.toLowerCase().includes(term)
         );
+        const matchesProductFilter = selectedProducts.length === 0 ||
+            (mov.productCode && selectedProducts.includes(mov.productCode));
+
+        return matchesSearch && matchesProductFilter;
     });
 
     const totalPages = Math.ceil(filteredMovements.length / rowsPerPage);
     const currentItems = filteredMovements.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
 
     return (
-        <main className="min-h-screen bg-[#f4f7fa] pb-20" onClick={() => setMenuOpen(false)}>
+        <main className="min-h-screen bg-[#f4f7fa] pb-20" onClick={() => {
+            setMenuOpen(false);
+            setShowProductFilter(false);
+        }}>
             {/* Header */}
             <header className="flex justify-between items-center mb-8 p-4 bg-white/80 backdrop-blur-md border-b border-white shadow-sm sticky top-0 z-50">
                 <div className="flex items-center gap-4">
@@ -142,21 +155,22 @@ export default function ControlMovimientosPage() {
                         </div>
                     )}
 
-                    {/* BARRA DE HERRAMIENTAS INTEGRADA (Buscador y Paginación de ProductosPage) */}
+                    {/* BARRA DE HERRAMIENTAS */}
                     <div className="p-6 border-b border-gray-100 flex flex-col xl:flex-row justify-between items-center gap-4 bg-white">
-                        {/* Buscador Estilo Productos */}
-                        <div className="relative w-full xl:w-72">
-                            <Icon icon="solar:magnifer-linear" className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg" />
-                            <input
-                                type="text"
-                                placeholder="Búsqueda global..."
-                                value={searchTerm}
-                                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-                                className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium"
-                            />
+                        <div className="flex flex-col md:flex-row items-center gap-4 w-full xl:w-auto">
+                            <div className="relative w-full md:w-72">
+                                <Icon icon="solar:magnifer-linear" className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg" />
+                                <input
+                                    type="text"
+                                    placeholder="Búsqueda global..."
+                                    value={searchTerm}
+                                    onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                                    className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                />
+                            </div>
                         </div>
 
-                        {/* Controles de Paginación Estilo Productos */}
+                        {/* Paginación */}
                         <div className="flex items-center gap-4 text-gray-600 text-sm font-medium">
                             <div className="flex items-center border border-gray-300 rounded-lg px-3 py-1.5 bg-white">
                                 <select
@@ -170,26 +184,20 @@ export default function ControlMovimientosPage() {
                                     <option value={50}>50</option>
                                 </select>
                             </div>
-
                             <button onClick={loadData} className="hover:text-blue-500 transition-colors p-1" title="Actualizar">
                                 <Icon icon="solar:refresh-bold" className="text-xl" />
                             </button>
-
-                            <div className="flex items-center gap-1 border-l pl-4 border-gray-100">
-                                <button
-                                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                                    disabled={currentPage === 1}
-                                    className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-30"
-                                >
+                            <div className="flex items-center gap-1 bg-gray-50 rounded-xl px-2 py-1 border border-gray-200">
+                                <button onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1} className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-30">
                                     <Icon icon="solar:alt-arrow-left-bold" className="text-xl" />
                                 </button>
-                                <span className="text-[11px] font-black text-gray-400 uppercase tracking-tighter mx-1">
+                                <span className="text-[11px] font-black text-gray-400 uppercase tracking-widest mx-3 min-w-[50px] text-center">
                                     {currentPage} / {totalPages || 1}
                                 </span>
                                 <button
                                     onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                                     disabled={currentPage === totalPages || totalPages === 0}
-                                    className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-30"
+                                    className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-30 transition-colors"
                                 >
                                     <Icon icon="solar:alt-arrow-right-bold" className="text-xl" />
                                 </button>
@@ -201,7 +209,60 @@ export default function ControlMovimientosPage() {
                         <table className="w-full text-sm text-left border-separate border-spacing-0">
                             <thead>
                                 <tr className="text-[11px] uppercase text-gray-400 tracking-widest font-bold bg-white">
-                                    <th className="px-8 py-5 border-b border-gray-50">Producto</th>
+                                    {/* COLUMNA PRODUCTO CON ICONO DE FILTRO INTEGRADO */}
+                                    <th className="px-8 py-5 border-b border-gray-50 relative">
+                                        <div className="flex items-center gap-2">
+                                            <span>Producto</span>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); setShowProductFilter(!showProductFilter); }}
+                                                className={`p-1 rounded-md transition-all ${selectedProducts.length > 0 ? 'bg-blue-500 text-white' : 'hover:bg-gray-100 text-gray-300 hover:text-blue-500'}`}
+                                            >
+                                                <Icon icon="solar:filter-bold" className="text-xs" />
+                                            </button>
+                                        </div>
+
+                                        {/* MENÚ DESPLEGABLE DEBAJO DEL TEXTO */}
+                                        {showProductFilter && (
+                                            <div
+                                                className="absolute left-8 mt-2 w-64 bg-white border border-gray-100 rounded-2xl shadow-2xl z-[60] py-3 animate-in fade-in zoom-in duration-150 normal-case tracking-normal"
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                <div className="px-4 pb-2 border-b border-gray-50 flex justify-between items-center">
+                                                    <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Filtrar SKU</span>
+                                                    {selectedProducts.length > 0 && (
+                                                        <button onClick={() => setSelectedProducts([])} className="text-[9px] font-bold text-red-500 hover:underline">Limpiar</button>
+                                                    )}
+                                                </div>
+                                                <div className="max-h-60 overflow-y-auto py-2 custom-scrollbar">
+                                                    {uniqueProducts.length > 0 ? (
+                                                        uniqueProducts.map((sku) => (
+                                                            <label key={sku} className="flex items-center px-4 py-2 hover:bg-gray-50 cursor-pointer transition-colors group">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    className="hidden"
+                                                                    checked={selectedProducts.includes(sku!)}
+                                                                    onChange={() => {
+                                                                        setSelectedProducts(prev =>
+                                                                            prev.includes(sku!) ? prev.filter(s => s !== sku) : [...prev, sku!]
+                                                                        );
+                                                                        setCurrentPage(1);
+                                                                    }}
+                                                                />
+                                                                <div className={`w-3.5 h-3.5 rounded border mr-3 flex items-center justify-center transition-all ${selectedProducts.includes(sku!) ? 'bg-blue-500 border-blue-500' : 'border-gray-300 group-hover:border-blue-400'}`}>
+                                                                    {selectedProducts.includes(sku!) && <Icon icon="solar:check-read-bold" className="text-white text-[9px]" />}
+                                                                </div>
+                                                                <span className={`text-[11px] font-medium ${selectedProducts.includes(sku!) ? 'text-blue-600 font-bold' : 'text-gray-500'}`}>
+                                                                    {sku}
+                                                                </span>
+                                                            </label>
+                                                        ))
+                                                    ) : (
+                                                        <div className="px-4 py-2 text-center text-gray-400 text-[10px] font-bold uppercase">Sin datos</div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </th>
                                     <th className="px-8 py-5 border-b border-gray-50 text-center">Tipo</th>
                                     <th className="px-8 py-5 border-b border-gray-50 text-center">Cant.</th>
                                     <th className="px-8 py-5 border-b border-gray-50 text-center">Operador</th>

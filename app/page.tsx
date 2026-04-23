@@ -15,7 +15,7 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     // CRUCIAL: Detiene el refresco de la página
     e.preventDefault();
-    
+
     if (!id) return alert("Ingresa tu número de empleado");
 
     setLoading(true);
@@ -39,7 +39,7 @@ export default function LoginPage() {
         } else if (data.success) {
           // Guardamos el objeto completo del usuario
           localStorage.setItem('user', JSON.stringify(data.user));
-          
+
           // Redirección basada en rol
           if (data.user.role === 'admin') {
             router.push('/admin');
@@ -59,7 +59,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-[#f4f7fa] flex items-center justify-center p-4">
-      <form 
+      <form
         onSubmit={handleLogin}
         className="bg-white p-10 rounded-2xl shadow-xl w-full max-w-md text-center border border-gray-100"
       >
@@ -105,14 +105,27 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-[#0095ff] text-white py-4 rounded-xl flex items-center justify-center font-bold hover:bg-blue-600 transition-all shadow-lg active:scale-95 disabled:bg-gray-300"
+          className="w-full bg-[#0095ff] text-white py-4 rounded-xl flex items-center justify-between px-6 font-bold hover:bg-blue-600 transition-all shadow-lg active:scale-95 disabled:bg-gray-300"
         >
           {loading ? (
-            <Icon icon="solar:restart-linear" className="animate-spin text-2xl" />
+            // Cuando carga, centramos el spinner en todo el ancho
+            <div className="w-full flex justify-center">
+              <Icon icon="solar:restart-linear" className="animate-spin text-2xl" />
+            </div>
           ) : (
             <>
-              {step === 1 ? 'Continuar' : 'Entrar'}
-              <Icon icon="solar:arrow-right-bold" className="ml-2" />
+              {/* 1. ESPACIADOR IZQUIERDO: Mismo ancho que el contenedor del icono para balancear el centro */}
+              <div className="w-8" aria-hidden="true" />
+
+              {/* 2. TEXTO: Al ser flex-1 y estar entre dos bloques de igual ancho, queda centrado al milímetro */}
+              <span className="flex-1 text-center whitespace-nowrap">
+                {step === 1 ? 'Continuar' : 'Entrar'}
+              </span>
+
+              {/* 3. CONTENEDOR DE ICONO: Ancho fijo y alineado a la derecha */}
+              <div className="w-8 flex justify-end">
+                <Icon icon="solar:arrow-right-bold" className="text-xl" />
+              </div>
             </>
           )}
         </button>

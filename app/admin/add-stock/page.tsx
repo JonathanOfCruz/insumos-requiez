@@ -201,14 +201,14 @@ export default function AddStockPage() {
               <div className="relative">
                 <label className="text-gray-600 text-xs mb-2 block font-bold uppercase tracking-wider">Código del producto</label>
                 <div className="flex items-center border-b border-gray-200 focus-within:border-blue-500 py-3 group transition-colors">
-                  <Icon icon="glyphs:barcode-duo" className={`text-2xl mr-3 ${searchError ? 'text-red-400' : 'text-gray-400 group-focus-within:text-blue-500'}`} />
+                  <Icon icon="glyphs:barcode-duo" className={`text-2xl mr-3 ${searchError ? 'text-red-400' : 'text-gray-600 group-focus-within:text-blue-500'}`} />
                   <input
                     type="text"
                     value={code}
                     onChange={(e) => setCode(e.target.value)}
                     onBlur={handleCodeBlur}
                     placeholder="Ingresa el código del SKU"
-                    className="w-full outline-none text-gray-800 placeholder:text-gray-400 font-bold text-lg bg-transparent"
+                    className="w-full outline-none text-gray-800 placeholder:text-gray-600 text-lg bg-transparent"
                     required
                   />
                 </div>
@@ -217,28 +217,28 @@ export default function AddStockPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="relative">
-                  <label className="text-gray-400 text-xs mb-2 block font-bold uppercase tracking-wider">Nombre del producto</label>
+                  <label className="text-gray-600 text-xs mb-2 block font-bold uppercase tracking-wider">Nombre del producto</label>
                   <div className="flex items-center border-b border-gray-50 py-3">
-                    <Icon icon="solar:box-minimalistic-linear" className="text-gray-300 text-2xl mr-3" />
+                    <Icon icon="solar:box-minimalistic-linear" className="text-gray-600 text-2xl mr-3" />
                     <input
                       type="text"
                       value={name}
                       placeholder="Autocompletado..."
-                      className="w-full outline-none text-gray-500 bg-transparent font-medium"
+                      className="w-full outline-none text-gray-600 bg-transparent font-medium"
                       readOnly
                     />
                   </div>
                 </div>
 
                 <div className="relative">
-                  <label className="text-gray-400 text-xs mb-2 block font-bold uppercase tracking-wider">Clasificación</label>
+                  <label className="text-gray-600 text-xs mb-2 block font-bold uppercase tracking-wider">Clasificación</label>
                   <div className="flex items-center border-b border-gray-50 py-3">
-                    <Icon icon="si:server-line" className="text-gray-300 text-2xl mr-3" />
+                    <Icon icon="si:server-line" className="text-gray-600 text-2xl mr-3" />
                     <input
                       type="text"
                       value={category}
                       placeholder="Categoría..."
-                      className="w-full outline-none text-gray-400 bg-transparent uppercase text-xs font-black tracking-widest"
+                      className="w-full outline-none text-gray-600 bg-transparent uppercase text-xs font-black tracking-widest"
                       readOnly
                     />
                   </div>
@@ -254,14 +254,14 @@ export default function AddStockPage() {
               <div className="relative">
                 <label className="text-gray-600 text-xs mb-2 block font-bold uppercase tracking-wider">Cantidad a añadir</label>
                 <div className="flex items-center border-b border-gray-200 focus-within:border-blue-500 py-3 group transition-colors">
-                  <Icon icon="f7:number-square-fill" className="text-gray-400 group-focus-within:text-blue-500 text-2xl mr-3" />
+                  <Icon icon="f7:number-square-fill" className="text-gray-600 group-focus-within:text-blue-500 text-2xl mr-3" />
                   <input
                     type="number"
                     min="1"
                     value={quantityToAdd}
                     onChange={(e) => setQuantityToAdd(e.target.value)}
                     placeholder="0"
-                    className="w-full outline-none text-gray-800 font-black text-3xl bg-transparent"
+                    className="w-full outline-none text-gray-600 font-black text-xl bg-transparent"
                     required
                     disabled={!productFound}
                   />

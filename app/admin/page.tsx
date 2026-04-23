@@ -194,8 +194,8 @@ export default function AdminPage() {
 
       {/* Separación y Footer sutil al final */}
       <div className="mt-20 flex flex-col items-center">
-        <div className="w-12 h-1 bg-gray-200 rounded-full mb-4"></div>
-        <p className="text-gray-300 text-[10px] font-bold uppercase tracking-[0.3em]">Sistema de Gestión de Almacén</p>
+        <div className="w-12 h-1 bg-gray-200 rounded-full mb-5"></div>
+        <p className="text-gray-300 text-[10px] font-bold uppercase tracking-[0.3em] mb-5">Sistema de Gestión de Insumos</p>
       </div>
     </main>
   );

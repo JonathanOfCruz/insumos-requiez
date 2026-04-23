@@ -62,11 +62,11 @@ export default function AdminRequestsPage() {
 
     return (
         <main className="min-h-screen bg-[#f4f7fa] pb-20" onClick={() => setMenuOpen(false)}>
-            
+
             {/* Header / Navbar Persistente */}
             <header className="flex justify-between items-center mb-8 p-4 bg-white/80 backdrop-blur-md border-b border-white shadow-sm sticky top-0 z-50">
                 <div className="flex items-center gap-4">
-                    
+
                     <div className="hidden md:flex items-center gap-2">
                         <div className="w-2 h-2 bg-[#0095ff] rounded-full animate-pulse" />
                         <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Libro de Solicitudes</span>
@@ -106,23 +106,44 @@ export default function AdminRequestsPage() {
 
             <div className="px-6 lg:px-12">
                 {/* Título y Contador Sutil */}
-                <div className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
-                    <div>
-                        <h1 className="text-5xl font-black text-gray-800 tracking-tight mb-2">Solicitudes</h1>
+                <div className="mb-12 flex flex-col md:flex-row md:items-center justify-between gap-8">
+                    <div className="space-y-1">
+                        <div className="flex items-center gap-3">
+                            <h1 className="text-5xl font-black text-gray-800 tracking-tighter">Solicitudes</h1>
+                            {pendientesCount > 0 && (
+                                <span className="bg-red-500 text-white text-[10px] font-black px-2 py-1 rounded-full animate-bounce">
+                                    {pendientesCount} NUEVAS
+                                </span>
+                            )}
+                        </div>
                         <p className="text-gray-400 font-medium tracking-wide">Auditoría y aprobación de movimientos de insumos.</p>
                     </div>
 
-                    <div className="bg-white px-8 py-4 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-6">
-                        <div className="text-center">
-                            <p className={`text-3xl font-black leading-none ${pendientesCount > 0 ? 'text-red-500' : 'text-gray-300'}`}>
-                                {pendientesCount}
-                            </p>
-                            <p className="text-gray-400 text-[9px] font-bold uppercase tracking-widest mt-1">Pendientes</p>
+                    <div className="flex items-center gap-4">
+                        {/* Card de Pendientes */}
+                        <div className="bg-white p-5 rounded-[2rem] shadow-sm border border-gray-100 flex items-center justify-center gap-4 min-w-[200px]">
+                            <div className={`p-3 rounded-2xl ${pendientesCount > 0 ? 'bg-red-50 text-red-500' : 'bg-gray-50 text-gray-300'}`}>
+                                <Icon icon="solar:bell-bing-bold" className="text-2xl" />
+                            </div>
+                            {/* Contenedor de texto centrado */}
+                            <div className="flex flex-col items-center">
+                                <p className={`text-2xl font-black leading-none ${pendientesCount > 0 ? 'text-red-500' : 'text-gray-400'}`}>
+                                    {pendientesCount}
+                                </p>
+                                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1 text-center">Pendientes</p>
+                            </div>
                         </div>
-                        <div className="w-[1px] h-8 bg-gray-100"></div>
-                        <div className="text-center">
-                            <p className="text-3xl font-black text-gray-800 leading-none">{requests.length}</p>
-                            <p className="text-gray-400 text-[9px] font-bold uppercase tracking-widest mt-1">Total Hoy</p>
+
+                        {/* Card de Total */}
+                        <div className="bg-gray-800 p-5 rounded-[2rem] shadow-xl flex items-center justify-center gap-4 min-w-[200px]">
+                            <div className="p-3 rounded-2xl bg-gray-700 text-gray-400">
+                                <Icon icon="solar:clipboard-list-bold" className="text-2xl" />
+                            </div>
+                            {/* Contenedor de texto centrado */}
+                            <div className="flex flex-col items-center">
+                                <p className="text-2xl font-black leading-none text-white">{requests.length}</p>
+                                <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mt-1 text-center">Total Hoy</p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -131,11 +152,11 @@ export default function AdminRequestsPage() {
                 <div className="bg-white rounded-[2.5rem] shadow-xl shadow-blue-900/5 border border-gray-100 overflow-hidden">
                     <div className="p-8 border-b border-gray-50 flex justify-end">
                         <div className="relative w-full md:w-72">
-                            <Icon icon="solar:magnifer-linear" className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg" />
+                            <Icon icon="solar:magnifer-linear" className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 text-lg" />
                             <input
                                 type="text"
                                 placeholder="Buscar código u operador..."
-                                className="w-full pl-12 pr-6 py-3 bg-gray-50 rounded-2xl text-xs outline-none border border-transparent focus:border-blue-100 focus:bg-white transition-all font-medium"
+                                className="w-full pl-12 pr-6 py-3 bg-gray-50 rounded-2xl text-xs outline-none border border-transparent focus:border-blue-100 focus:bg-white transition-all font-medium placeholder:text-gray-600"
                             />
                         </div>
                     </div>
@@ -193,10 +214,10 @@ export default function AdminRequestsPage() {
                                                     </div>
                                                 ) : (
                                                     <div className="flex justify-center">
-                                                        <span className={`text-[9px] font-black uppercase tracking-[0.2em] px-4 py-2 rounded-full border ${req.status === 'Aprobada' 
-                                                            ? 'bg-green-50 text-green-500 border-green-100' 
+                                                        <span className={`text-[9px] font-black uppercase tracking-[0.2em] px-4 py-2 rounded-full border ${req.status === 'Aprobada'
+                                                            ? 'bg-green-50 text-green-500 border-green-100'
                                                             : 'bg-red-50 text-red-400 border-red-100'
-                                                        }`}>
+                                                            }`}>
                                                             {req.status}
                                                         </span>
                                                     </div>
@@ -208,12 +229,6 @@ export default function AdminRequestsPage() {
                             </tbody>
                         </table>
                     </div>
-                </div>
-
-                {/* Footer Decorativo */}
-                <div className="mt-20 flex flex-col items-center">
-                    <div className="w-12 h-1 bg-gray-200 rounded-full mb-4"></div>
-                    <p className="text-gray-300 text-[10px] font-bold uppercase tracking-[0.3em]">Protocolo de Seguridad de Activos</p>
                 </div>
             </div>
         </main>

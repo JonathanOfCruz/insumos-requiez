@@ -21,18 +21,15 @@ export async function POST(req: Request) {
     
     console.log("📦 Datos recibidos:", JSON.stringify(data, null, 2));
 
-    // Validaciones
     if (!data.code || !data.name || data.stock === undefined || !data.category) {
       return NextResponse.json({ error: "Datos incompletos" }, { status: 400 });
     }
 
-    // Verificar si el código ya existe
     const existingProduct = await Product.findOne({ code: data.code });
     if (existingProduct) {
       return NextResponse.json({ error: "Este código ya está registrado" }, { status: 409 });
     }
 
-    // Crear producto con todos los campos
     const newProduct = new Product({
       code: data.code,
       name: data.name,
@@ -40,7 +37,8 @@ export async function POST(req: Request) {
       category: data.category,
       cost: data.cost !== undefined && data.cost !== null ? Number(data.cost) : 0,
       purchaseOrder: data.purchaseOrder || '',
-      purchaseStatus: data.purchaseStatus || 'Vigente'
+      purchaseStatus: data.purchaseStatus || 'Vigente',
+      assignedOperator: data.assignedOperator || '' // NUEVO
     });
 
     const savedProduct = await newProduct.save();
@@ -58,7 +56,7 @@ export async function PUT(req: Request) {
   try {
     await connectDB();
     const data = await req.json();
-    const { _id, code, name, stock, category, cost, purchaseOrder, purchaseStatus } = data;
+    const { _id, code, name, stock, category, cost, purchaseOrder, purchaseStatus, assignedOperator } = data;
 
     if (!_id) {
       return NextResponse.json({ error: "ID requerido" }, { status: 400 });
@@ -73,7 +71,8 @@ export async function PUT(req: Request) {
         category,
         cost: Number(cost) || 0,
         purchaseOrder: purchaseOrder || '',
-        purchaseStatus: purchaseStatus || 'Vigente'
+        purchaseStatus: purchaseStatus || 'Vigente',
+        assignedOperator: assignedOperator || ''
       },
       { new: true, runValidators: true }
     );

@@ -1,3 +1,4 @@
+// app/lib/models/Product.ts
 import mongoose, { Schema, model, models } from 'mongoose';
 
 const ProductSchema = new Schema({
@@ -29,7 +30,7 @@ const ProductSchema = new Schema({
     min: [0, 'El costo no puede ser negativo'], 
     default: 0
   },
-  purchaseOrder: { 
+  purchaseOrder: {
     type: String,
     trim: true,
     default: ''
@@ -38,8 +39,16 @@ const ProductSchema = new Schema({
     type: String,
     enum: ['Vigente', 'Salida'], 
     default: 'Vigente'
+  },
+  assignedOperator: {
+    type: String,
+    trim: true,
+    default: ''
   }
-}, { timestamps: true });
+}, { 
+  timestamps: true,
+  minimize: false 
+});
 
 const Product = models.Product || model('Product', ProductSchema);
 export default Product;

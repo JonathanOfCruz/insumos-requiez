@@ -13,7 +13,8 @@ interface IProduct {
     category: string;
     cost: number;
     purchaseOrder: string;
-    purchaseStatus: 'Vigente' | 'Salida'; // ✅ Cambiado
+    purchaseStatus: 'Vigente' | 'Salida';
+    assignedOperator: string; // NUEVO
     totalEntradas?: number;
     totalSalidas?: number;
 }
@@ -28,8 +29,9 @@ export default function ProductosPage() {
     const [stock, setStock] = useState('0');
     const [name, setName] = useState('');
     const [category, setCategory] = useState('');
-    const [cost, setCost] = useState('0'); // NUEVO
-    const [purchaseOrder, setPurchaseOrder] = useState(''); // NUEVO
+    const [cost, setCost] = useState('0');
+    const [purchaseOrder, setPurchaseOrder] = useState('');
+    const [assignedOperator, setAssignedOperator] = useState(''); // NUEVO
     const [loading, setLoading] = useState(false);
 
     // Estados de Datos Reales
@@ -44,12 +46,11 @@ export default function ProductosPage() {
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
     const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
 
-
     const [showFilters, setShowFilters] = useState<{ [key: string]: boolean }>({
         code: false,
         name: false,
         category: false,
-        status: false // NUEVO
+        status: false
     });
 
     // Paginación
@@ -61,12 +62,17 @@ export default function ProductosPage() {
     const [editForm, setEditForm] = useState<IProduct | null>(null);
 
     const categoriesList = ['Herramienta', 'Equipo', 'Insumos'];
-    const statusList = ['Vigente', 'Salida']; // NUEVO
+    const statusList = ['Vigente', 'Salida'];
+
+    // Lista de operadores (deberías obtenerla de tu API)
+    const [operators, setOperators] = useState<{ _id: string; name: string }[]>([]);
 
     const uniqueCodes = Array.from(new Set(products.map(p => p.code))).sort();
     const uniqueNames = Array.from(new Set(products.map(p => p.name))).sort();
 
+    // Cargar operadores
     useEffect(() => {
+        fetchOperators();
         fetchProducts();
         const userData = localStorage.getItem("user");
         if (userData) {
@@ -80,6 +86,18 @@ export default function ProductosPage() {
             } catch (error) { setInitials("PRO"); }
         }
     }, []);
+
+    const fetchOperators = async () => {
+        try {
+            const res = await fetch('/api/operators');
+            if (res.ok) {
+                const data = await res.json();
+                setOperators(data);
+            }
+        } catch (error) {
+            console.error("Error cargando operadores:", error);
+        }
+    };
 
     const fetchProducts = async () => {
         setTableLoading(true);
@@ -115,7 +133,8 @@ export default function ProductosPage() {
             const matchesGlobal = searchTerm === '' ||
                 product.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                product.category.toLowerCase().includes(searchTerm.toLowerCase());
+                product.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                product.assignedOperator?.toLowerCase().includes(searchTerm.toLowerCase());
 
             const matchesCode = selectedCodes.length === 0 || selectedCodes.includes(product.code);
             const matchesName = selectedNames.length === 0 || selectedNames.includes(product.name);
@@ -138,6 +157,7 @@ export default function ProductosPage() {
             "Costo": p.cost,
             "Pedido de Compra": p.purchaseOrder,
             "Estado": p.purchaseStatus,
+            "Asignado a": p.assignedOperator || '-',
             "Entradas": p.totalEntradas || 0,
             "Salidas": p.totalSalidas || 0,
             "Stock Actual": p.stock,
@@ -160,31 +180,63 @@ export default function ProductosPage() {
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
+
+        console.log("=== DEBUG REGISTRO ===");
+        console.log("Categoría:", category);
+        console.log("AssignedOperator ANTES de enviar:", assignedOperator);
+        console.log("Tipo de assignedOperator:", typeof assignedOperator);
+
         try {
+            const body: any = {
+                code,
+                name,
+                stock: parseInt(stock),
+                category,
+                cost: parseFloat(cost),
+                purchaseOrder,
+                purchaseStatus: 'Vigente'
+            };
+
+            // Siempre incluir assignedOperator si la categoría es "Equipo"
+            if (category === 'Equipo') {
+                body.assignedOperator = assignedOperator;
+                console.log("✅ Incluyendo assignedOperator en body:", body.assignedOperator);
+            } else {
+                console.log("❌ No se incluye assignedOperator porque categoría no es Equipo");
+            }
+
+            console.log("📦 Body completo a enviar:", JSON.stringify(body, null, 2));
+
             const res = await fetch('/api/products', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    code,
-                    name,
-                    stock: parseInt(stock),
-                    category,
-                    cost: parseFloat(cost),
-                    purchaseOrder,
-                    purchaseStatus: 'Vigente'
-                }),
+                body: JSON.stringify(body),
             });
+
+            const responseData = await res.json();
+            console.log("📨 Respuesta del servidor:", responseData);
+
             if (res.ok) {
+                console.log("✅ Producto registrado exitosamente");
                 setCode('');
                 setStock('0');
                 setName('');
                 setCategory('');
                 setCost('0');
                 setPurchaseOrder('');
+                setAssignedOperator('');
                 fetchProducts();
                 alert('Producto registrado con éxito');
+            } else {
+                console.error("❌ Error en registro:", responseData);
+                alert(responseData.error || 'Error al registrar');
             }
-        } catch (err) { alert('Error de conexión'); } finally { setLoading(false); }
+        } catch (err) {
+            console.error("❌ Error de conexión:", err);
+            alert('Error de conexión');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleSaveEdit = async () => {
@@ -350,7 +402,26 @@ export default function ProductosPage() {
                                     </select>
                                 </div>
                             </div>
-                            {/* NUEVO CAMPO: Costo */}
+                            {/* Campo Condicional: Asignar a Operador (solo para Equipo) */}
+                            {category === 'Equipo' && (
+                                <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <label className="text-gray-600 text-xs mb-2 block font-bold uppercase tracking-wider">Asignar a Operador</label>
+                                    <div className="flex items-center border-b border-gray-200 py-2 focus-within:border-blue-500 transition-colors">
+                                        <Icon icon="solar:user-bold" className="text-gray-400 text-2xl mr-3" />
+                                        <select
+                                            value={assignedOperator}
+                                            onChange={(e) => setAssignedOperator(e.target.value)}
+                                            className="w-full outline-none bg-transparent cursor-pointer text-sm text-gray-500 font-medium"
+                                            required={category === 'Equipo'}
+                                        >
+                                            <option value="">Selecciona un operador</option>
+                                            {operators.map(op => (
+                                                <option key={op._id} value={op.name}>{op.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                            )}
                             <div>
                                 <label className="text-gray-600 text-xs mb-2 block font-bold uppercase tracking-wider">Costo del producto ($)</label>
                                 <div className="flex items-center border-b border-gray-200 py-2 focus-within:border-blue-500 transition-colors">
@@ -358,7 +429,6 @@ export default function ProductosPage() {
                                     <input type="number" step="0.01" value={cost} onChange={(e) => setCost(e.target.value)} placeholder="0.00" className="w-full outline-none bg-transparent text-sm text-gray-500 font-medium" required />
                                 </div>
                             </div>
-                            {/* NUEVO CAMPO: Pedido de Compra */}
                             <div>
                                 <label className="text-gray-600 text-xs mb-2 block font-bold uppercase tracking-wider">Pedido de Compra</label>
                                 <div className="flex items-center border-b border-gray-200 py-2 focus-within:border-blue-500 transition-colors">
@@ -401,7 +471,7 @@ export default function ProductosPage() {
                         </div>
 
                         <div className="overflow-x-auto">
-                            <table className="w-full text-sm text-left border-separate border-spacing-0 min-w-[1000px]">
+                            <table className="w-full text-sm text-left border-separate border-spacing-0 min-w-[1200px]">
                                 <thead className="text-[11px] text-gray-400 uppercase tracking-widest font-bold">
                                     <tr>
                                         <th className="px-4 py-3 min-w-[120px] relative">
@@ -420,6 +490,7 @@ export default function ProductosPage() {
                                         </th>
                                         <th className="px-4 py-3">Costo ($)</th>
                                         <th className="px-4 py-3">Pedido Compra</th>
+                                        <th className="px-4 py-3">Asignado a</th>
                                         <th className="px-4 py-3 min-w-[100px] relative">
                                             <div className="flex items-center gap-2">
                                                 <span>Estado</span>
@@ -479,6 +550,14 @@ export default function ProductosPage() {
                                                         />
                                                     </td>
                                                     <td className="px-4 py-4">
+                                                        <input
+                                                            className="w-full bg-transparent border-b border-blue-400 outline-none font-medium text-sm text-gray-500"
+                                                            value={editForm?.assignedOperator ?? ''}
+                                                            onChange={e => setEditForm({ ...editForm!, assignedOperator: e.target.value })}
+                                                            placeholder="Asignar a operador"
+                                                        />
+                                                    </td>
+                                                    <td className="px-4 py-4">
                                                         <select
                                                             className="bg-transparent border-b border-blue-400 outline-none font-bold uppercase text-[10px] text-gray-500"
                                                             value={editForm?.purchaseStatus ?? 'Vigente'}
@@ -525,6 +604,15 @@ export default function ProductosPage() {
                                                     <td className="px-4 py-4 text-gray-600 font-medium text-xs">{product.name}</td>
                                                     <td className="px-4 py-4 text-xs font-bold text-green-600">${product.cost?.toFixed(2) || '0.00'}</td>
                                                     <td className="px-4 py-4 text-xs text-gray-500 font-mono">{product.purchaseOrder || '-'}</td>
+                                                    <td className="px-4 py-4 text-xs text-gray-500">
+                                                        {product.category === 'Equipo' ? (
+                                                            <span className="bg-blue-50 text-blue-600 px-2 py-1 rounded-full text-[9px] font-bold">
+                                                                {product.assignedOperator || 'No asignado'}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-gray-400">-</span>
+                                                        )}
+                                                    </td>
                                                     <td className="px-4 py-4">
                                                         <button
                                                             onClick={() => handleStatusChange(product._id, product.purchaseStatus)}
@@ -546,6 +634,7 @@ export default function ProductosPage() {
                                                                     cost: product.cost ?? 0,
                                                                     purchaseOrder: product.purchaseOrder ?? '',
                                                                     purchaseStatus: product.purchaseStatus ?? 'Vigente',
+                                                                    assignedOperator: product.assignedOperator ?? '',
                                                                     stock: product.stock ?? 0,
                                                                     code: product.code ?? '',
                                                                     name: product.name ?? '',

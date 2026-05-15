@@ -1,21 +1,21 @@
 "use client";
-import { useState, useEffect, useMemo } from 'react'; // Agregamos useMemo
+import { useState, useEffect, useMemo } from 'react';
 import { Icon } from '@iconify/react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import * as XLSX from 'xlsx'; // Asegúrate de tener instalada la librería xlsx
+import * as XLSX from 'xlsx';
 
 export default function AdminRequestsPage() {
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
     const [menuOpen, setMenuOpen] = useState(false);
     const [initials, setInitials] = useState("...");
-    const [searchTerm, setSearchTerm] = useState(''); // Estado para la búsqueda
+    const [searchTerm, setSearchTerm] = useState('');
     const router = useRouter();
 
     const fetchRequests = async () => {
         try {
-            const res = await fetch('/api/admin/requests');
+            const res = await fetch('/api/requests');
             const data = await res.json();
             setRequests(data);
         } catch (error) {
@@ -38,31 +38,30 @@ export default function AdminRequestsPage() {
         fetchRequests();
     }, []);
 
-    // --- LÓGICA DE FILTRADO ---
     const filteredRequests = useMemo(() => {
         if (!searchTerm.trim()) return requests;
         const lowTerm = searchTerm.toLowerCase();
         
         return requests.filter((req: any) => {
             const matchesOperator = req.operator?.name?.toLowerCase().includes(lowTerm);
+            const matchesArea = req.operator?.area?.toLowerCase().includes(lowTerm);
             const matchesProduct = req.items.some((item: any) => 
                 item.product?.code?.toLowerCase().includes(lowTerm) || 
                 item.product?.name?.toLowerCase().includes(lowTerm)
             );
-            return matchesOperator || matchesProduct;
+            return matchesOperator || matchesArea || matchesProduct;
         });
     }, [requests, searchTerm]);
 
-    // --- FUNCIÓN PARA EXPORTAR ---
     const exportToExcel = () => {
         if (filteredRequests.length === 0) return alert("No hay datos para exportar");
 
-        // Aplanamos los datos para el Excel (una fila por producto solicitado)
         const dataToExport = filteredRequests.flatMap((req: any) => 
             req.items.map((item: any) => ({
                 "Fecha": req.createdAt ? new Date(req.createdAt).toLocaleDateString() : 'Hoy',
                 "Estado": req.status,
                 "Operador": req.operator?.name || 'Sistema',
+                "Área": req.operator?.area || 'N/A',
                 "Código SKU": item.product?.code || 'N/A',
                 "Producto": item.product?.name || '---',
                 "Cantidad Solicitada": item.quantityRequested
@@ -157,7 +156,6 @@ export default function AdminRequestsPage() {
 
                 <div className="bg-white rounded-[2.5rem] shadow-xl shadow-blue-900/5 border border-gray-100 overflow-hidden">
                     <div className="p-8 border-b border-gray-50 flex flex-col md:flex-row justify-between items-center gap-4">
-                        {/* Botón de Excel */}
                         <button 
                             onClick={exportToExcel}
                             className="bg-green-50 text-green-600 px-6 py-3 rounded-2xl border border-green-100 hover:bg-green-600 hover:text-white transition-all font-black text-[10px] uppercase tracking-wider flex items-center gap-2 shadow-sm"
@@ -166,13 +164,13 @@ export default function AdminRequestsPage() {
                             Exportar reporte
                         </button>
 
-                        <div className="relative w-full md:w-72">
+                        <div className="relative w-full md:w-96">
                             <Icon icon="solar:magnifer-linear" className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 text-lg" />
                             <input
                                 type="text"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                placeholder="Buscar código u operador..."
+                                placeholder="Buscar código, operador o área..."
                                 className="w-full pl-12 pr-6 py-3 bg-gray-50 rounded-2xl text-xs outline-none border border-transparent focus:border-blue-100 focus:bg-white transition-all font-medium placeholder:text-gray-600"
                             />
                         </div>
@@ -182,44 +180,72 @@ export default function AdminRequestsPage() {
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="text-[10px] uppercase text-gray-400 tracking-[0.15em] border-b border-gray-50">
-                                    <th className="px-10 py-6 font-black">Código SKU</th>
-                                    <th className="px-10 py-6 font-black">Producto</th>
-                                    <th className="px-10 py-6 font-black text-center">Cantidad</th>
-                                    <th className="px-10 py-6 font-black text-center">Operador</th>
-                                    <th className="px-10 py-6 font-black text-center">Acciones</th>
+                                    <th className="px-6 py-6 font-black">Código SKU</th>
+                                    <th className="px-6 py-6 font-black">Producto</th>
+                                    <th className="px-6 py-6 font-black text-center">Cantidad</th>
+                                    <th className="px-6 py-6 font-black">Operador</th>
+                                    <th className="px-6 py-6 font-black">Área</th>
+                                    <th className="px-6 py-6 font-black">Fecha</th>
+                                    <th className="px-6 py-6 font-black text-center">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
                                 {loading ? (
                                     <tr>
-                                        <td colSpan={5} className="py-24 text-center">
+                                        <td colSpan={7} className="py-24 text-center">
                                             <Icon icon="solar:restart-linear" className="animate-spin text-4xl text-blue-500 mx-auto mb-4" />
-                                            <span className="text-[10px] font-bold uppercase tracking-widest text-gray-600">Consultando libro mayor...</span>
+                                            <span className="text-[10px] font-bold uppercase tracking-widest text-gray-600">Consultando información...</span>
                                         </td>
                                     </tr>
                                 ) : filteredRequests.map((req: any) => (
                                     req.items.map((item: any, idx: number) => (
                                         <tr key={`${req._id}-${idx}`} className="group hover:bg-blue-50/20 transition-all">
-                                            <td className="px-10 py-7 text-xs font-black text-blue-600 tracking-tighter">{item.product?.code || 'N/A'}</td>
-                                            <td className="px-10 py-7 text-xs text-gray-600 font-bold">{item.product?.name || '---'}</td>
-                                            <td className="px-10 py-7 text-xs text-center font-black text-gray-800">
+                                            <td className="px-6 py-7 text-xs font-black text-blue-600 tracking-tighter">{item.product?.code || 'N/A'}</td>
+                                            <td className="px-6 py-7 text-xs text-gray-600 font-bold">{item.product?.name || '---'}</td>
+                                            <td className="px-6 py-7 text-xs text-center font-black text-gray-800">
                                                 <span className="bg-gray-50 px-3 py-1 rounded-md border border-gray-100">{item.quantityRequested}</span>
                                             </td>
-                                            <td className="px-10 py-7 text-center">
-                                                <div className="flex items-center justify-center gap-2">
+                                            <td className="px-6 py-7">
+                                                <div className="flex items-center gap-2">
                                                     <div className="w-1.5 h-1.5 rounded-full bg-blue-400"></div>
-                                                    <span className="text-[10px] font-black text-gray-400 uppercase">{req.operator?.name || 'Sistema'}</span>
+                                                    <span className="text-[11px] font-bold text-gray-700">{req.operator?.name || 'Sistema'}</span>
                                                 </div>
                                             </td>
-                                            <td className="px-10 py-7">
+                                            <td className="px-6 py-7">
+                                                <span className="text-[10px] font-black text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                                                    {req.operator?.area || 'N/A'}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-7 text-xs text-gray-500 font-mono">
+                                                {req.createdAt ? new Date(req.createdAt).toLocaleDateString('es-ES', {
+                                                    day: '2-digit',
+                                                    month: '2-digit',
+                                                    year: 'numeric',
+                                                    hour: '2-digit',
+                                                    minute: '2-digit'
+                                                }) : 'N/A'}
+                                            </td>
+                                            <td className="px-6 py-7">
                                                 {req.status === 'Pendiente' ? (
-                                                    <div className="flex justify-center gap-3">
-                                                        <button onClick={() => handleStatus(req._id, 'Aprobada')} className="bg-green-600 text-[#1e613c] px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-[#2d7a4d] hover:text-white transition-all shadow-sm active:scale-95">Aprobar</button>
-                                                        <button onClick={() => handleStatus(req._id, 'Rechazada')} className="bg-red-600 text-[#a93a3a] px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-[#c24b4b] hover:text-white transition-all shadow-sm active:scale-95">Rechazar</button>
+                                                    <div className="flex justify-center gap-2">
+                                                        <button 
+                                                            onClick={() => handleStatus(req._id, 'Aprobada')} 
+                                                            className="bg-green-600 text-white px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-green-700 transition-all shadow-sm active:scale-95"
+                                                        >
+                                                            Aprobar
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => handleStatus(req._id, 'Rechazada')} 
+                                                            className="bg-red-600 text-white px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-red-700 transition-all shadow-sm active:scale-95"
+                                                        >
+                                                            Rechazar
+                                                        </button>
                                                     </div>
                                                 ) : (
                                                     <div className="flex justify-center">
-                                                        <span className={`text-[9px] font-black uppercase tracking-[0.2em] px-4 py-2 rounded-full border ${req.status === 'Aprobada' ? 'bg-green-50 text-green-500 border-green-100' : 'bg-red-50 text-red-400 border-red-100'}`}>{req.status}</span>
+                                                        <span className={`text-[9px] font-black uppercase tracking-[0.2em] px-4 py-2 rounded-full border ${req.status === 'Aprobada' ? 'bg-green-50 text-green-600 border-green-200' : 'bg-red-50 text-red-500 border-red-200'}`}>
+                                                            {req.status}
+                                                        </span>
                                                     </div>
                                                 )}
                                             </td>

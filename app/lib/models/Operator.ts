@@ -1,10 +1,11 @@
-import mongoose, { Schema, model, models } from 'mongoose';
+// app/lib/models/Operator.ts
+import mongoose, { Schema } from 'mongoose';
 
 const OperatorSchema = new Schema({
   employeeNumber: { 
     type: String, 
     required: [true, 'El número de empleado es obligatorio'], 
-    unique: true, // Senior Check: Evita duplicados en la nómina
+    unique: true,
     trim: true,
   },
   name: { 
@@ -17,9 +18,9 @@ const OperatorSchema = new Schema({
     required: [true, 'El área es obligatoria'], 
     trim: true,
   },
-}, { timestamps: true }); // Agrega createdAt y updatedAt automáticamente
+}, { timestamps: true });
 
-// Senior Check: Si el modelo ya existe lo usa, sino lo crea (evita errores en desarrollo)
-const Operator = models.Operator || model('Operator', OperatorSchema);
+// ✅ Esta es la forma correcta de exportar para Next.js
+const Operator = mongoose.models.Operator || mongoose.model('Operator', OperatorSchema);
 
 export default Operator;

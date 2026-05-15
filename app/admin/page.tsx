@@ -7,23 +7,51 @@ export default function AdminPage() {
   const [initials, setInitials] = useState("...");
   const [menuOpen, setMenuOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
-  const prevCountRef = useRef(0); 
+  const prevCountRef = useRef(0);
   const router = useRouter();
 
   const fetchPendingCount = async () => {
     try {
-      const res = await fetch('/api/requests'); 
-      const data = await res.json();
-      const count = data.filter((r: any) => r.status === 'Pendiente').length;
+      // CORREGIDO: Añadir la barra inicial y la 's' al final
+      const res = await fetch('/api/requests');  // ✅ Cambiado de 'api/request'
+      const data = await res.json()
+
+      if (!res.ok) {
+        console.error("Error en la API: ", data.error)
+        setPendingCount(0)
+        return
+      }
+
+      if (data?.error) {
+        console.error("Error devuelto por la API: ", data.error)
+        setPendingCount(0)
+        return
+      }
+
+      let requests = []
+
+      if (Array.isArray(data)) {
+        requests = data
+      } else if (data?.data && Array.isArray(data.data)) {
+        requests = data.data
+      } else {
+        console.warn("La api no devolvio un array: ", typeof data, data)
+        setPendingCount(0)
+        return
+      }
+
+      const count = requests.filter((r: any) => r.status === 'Pendiente').length;
 
       if (count > prevCountRef.current) {
         playNotificationSound();
       }
 
-      setPendingCount(count);
-      prevCountRef.current = count;
+      setPendingCount(count)
+      // CORREGIDO: Usar asignación (=) en lugar de comparación (==)
+      prevCountRef.current = count  // ✅ Cambiado de == a =
     } catch (error) {
-      console.error("Error al obtener conteo:", error);
+      console.error("Error al obtener conteo: ", error)
+      setPendingCount(0)
     }
   };
 

@@ -1,6 +1,7 @@
 import { connectDB } from "@/app/lib/mongodb";
 import RequestModel from "@/app/lib/models/Request";
 import Product from "@/app/lib/models/Product";
+import Operator from "@/app/lib/models/Operator";
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 
@@ -63,18 +64,26 @@ export async function POST(req: Request) {
     }
 }
 
-// AGREGAMOS GET: Para que el Admin pueda ver todas las peticiones
+// app/api/requests/route.ts
 export async function GET() {
     try {
         await connectDB();
-        // Hacemos populate para traer los nombres del operador y del producto en lugar de solo IDs
+        
+        // Asegurar que el modelo Operator esté registrado
+        const Operator = await import("@/app/lib/models/Operator").then(m => m.default);
+        
         const requests = await RequestModel.find()
-            .populate('operator', 'name area') // Trae nombre y área del operador
-            .populate('items.product', 'name code') // Trae nombre y código del producto
-            .sort({ createdAt: -1 }); // Las más nuevas primero
-
+            .populate('operator', 'name area')
+            .populate('items.product', 'name code')
+            .sort({ createdAt: -1 });
+        
         return NextResponse.json(requests);
+        
     } catch (error) {
-        return NextResponse.json({ error: "Error al obtener peticiones" }, { status: 500 });
+        console.error("Error en GET /api/requests:", error);
+        return NextResponse.json(
+            { error: "Error al obtener peticiones" }, 
+            { status: 500 }
+        );
     }
 }
